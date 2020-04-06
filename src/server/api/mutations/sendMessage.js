@@ -147,7 +147,7 @@ export const sendMessage = async (
   //   `Sending (${serviceName}): ${messageInstance.user_number} -> ${messageInstance.contact_number}\nMessage: ${messageInstance.text}`
   // );
   //NO AWAIT: pro=return before api completes, con=context needs to stay alive
-  service.sendMessage(messageInstance, contact, organization);
+  service.sendMessage(messageInstance, contact, null, organization);
 
   if (initialMessageStatus === "needsMessage") {
     // don't both requerying the messages list on the response
