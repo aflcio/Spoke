@@ -7,8 +7,9 @@ import {
   r,
   cacheableData
 } from "../../models";
-import { log, getConfig } from "../../../lib";
+import { log } from "../../../lib";
 import { getLastMessage, saveNewIncomingMessage } from "./message-sending";
+import { symmetricDecrypt } from "./crypto";
 
 // TWILIO error_codes:
 // > 1 (i.e. positive) error_codes are reserved for Twilio error codes
@@ -29,7 +30,7 @@ const headerValidator = () => {
     const organization = req.params.orgId
       ? await cacheableData.organization.load(req.params.orgId) : null;
     const { authToken } = organization
-      ? await cacheableData.organization.getMessageServiceAuth(organization)
+      ? await getTwilioAuth(organization)
       : process.env.TWILIO_AUTH_TOKEN;
     const options = {
       validate: true,
@@ -38,6 +39,20 @@ const headerValidator = () => {
 
     return Twilio.webhook(authToken, options)(req, res, next);
   };
+};
+
+const getTwilioAuth = async organization => {
+  let {
+    authToken,
+    apiKey
+  } = await cacheableData.organization.getTwilioAuth(organization);
+  // If token is not encrypted, decryption will error. That's fine.
+  try {
+    authToken = symmetricDecrypt(authToken);
+  } catch (ex) {
+    log.warn("Unencrypted authToken");
+  }
+  return { authToken, apiKey };
 };
 
 async function convertMessagePartsToMessage(messageParts) {
@@ -95,8 +110,10 @@ function parseMessageText(message) {
 }
 
 async function sendMessage(message, contact, trx, organization) {
-  const APIERRORTEST = /apierrortest/.test(message.text);
-  if (!twilio && !APIERRORTEST) {
+  const { authToken, apiKey } = await getTwilioAuth(organization);
+  const twilio = Twilio(apiKey, authToken);
+  const APITEST = /twilioapitest/.test(message.text);
+  if (!twilio && !APITEST) {
     log.warn(
       "cannot actually send SMS message -- twilio is not fully configured:",
       message.id
@@ -115,13 +132,10 @@ async function sendMessage(message, contact, trx, organization) {
   }
 
   // Note organization won't always be available, so then contact can trace to it
-  const {
-    messagingServiceSid,
-    authToken,
-    apiKey
-  } = await cacheableData.organization.getMessageServiceAuth(
+  const messagingServiceSid = await cacheableData.organization.getMessageServiceSid(
     organization,
-    contact
+    contact,
+    message.text
   );
   return new Promise((resolve, reject) => {
     if (message.service !== "twilio") {
