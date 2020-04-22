@@ -101,8 +101,8 @@ async function sendMessage(message, contact, trx, organization) {
   if (apiKey && authToken) {
     twilio = Twilio(apiKey, authToken);
   }
-  const APITEST = /twilioapitest/.test(message.text);
-  if (!twilio && !APITEST) {
+  const APIERRORTEST = /apierrortest/.test(message.text);
+  if (!twilio && !APIERRORTEST) {
     log.warn(
       "cannot actually send SMS message -- twilio is not fully configured:",
       message.id
@@ -163,9 +163,6 @@ async function sendMessage(message, contact, trx, organization) {
     }
     const changes = {};
 
-    // FUTURE: this can be based on (contact, organization)
-    // Note organization won't always be available, so we'll need to conditionally look it up based on contact
-    const messagingServiceSid = process.env.TWILIO_MESSAGE_SERVICE_SID;
     changes.messageservice_sid = messagingServiceSid;
 
     const messageParams = Object.assign(
