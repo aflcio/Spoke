@@ -22,7 +22,9 @@ FROM ${RUNTIME_IMAGE}
 WORKDIR /spoke
 COPY --from=builder /spoke/build build
 COPY --from=builder /spoke/node_modules node_modules
-COPY --from=builder /spoke/package.json /spoke/yarn.lock ./
+# COPY --from=builder /spoke/package.json /spoke/yarn.lock ./
+COPY --from=builder /spoke/package.json /spoke/yarn.lock /spoke/.qgtunnel.sh ./
+COPY --from=builder /spoke/bin bin
 ENV NODE_ENV=production \
     PORT=3000 \
     ASSETS_DIR=./build/client/assets \

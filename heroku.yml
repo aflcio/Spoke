@@ -1,3 +1,5 @@
 build:
   docker:
     web: Dockerfile
+run:
+  web: ./.qgtunnel.sh && bin/qgtunnel npm start
