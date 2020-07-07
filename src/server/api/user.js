@@ -1,3 +1,4 @@
+import { getFeatures } from "./lib/config";
 import { mapFieldsToModel } from "./lib/utils";
 import { r, User, cacheableData } from "../models";
 
@@ -202,6 +203,10 @@ export const resolvers = {
       ],
       User
     ),
+    extra: user =>
+      user.extra && typeof user.extra === "object"
+        ? JSON.stringify(user.extra)
+        : user.extra || null,
     displayName: user =>
       `${user.first_name}${user.alias ? ` (${user.alias}) ` : " "}${
         user.last_name
@@ -244,6 +249,19 @@ export const resolvers = {
           organization_id: organizationId,
           is_archived: false
         })("left"),
+    profileComplete: async (user, { organizationId }) => {
+      const org = await cacheableData.organization.load(organizationId);
+      // @todo: standardize on escaped or not once there's an interface.
+      const fields = typeof getFeatures(org).profile_fields === "string"
+        ? JSON.parse(getFeatures(org).profile_fields)
+        : getFeatures(org).profile_fields || [];
+      for (const field of fields) {
+        if (!user.extra || !user.extra[field.name]) {
+          return false;
+        }
+      }
+      return true;
+    },
     cacheable: () => false // FUTURE: Boolean(r.redis) when full assignment data is cached
   }
 };
