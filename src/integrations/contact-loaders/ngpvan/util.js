@@ -3,13 +3,18 @@ import { getConfig } from "../../../server/api/lib/config";
 export const DEFAULT_NGP_VAN_API_BASE_URL = "https://api.securevan.com";
 
 export default class Van {
-  static getAuth = organization => {
+  static getAuth = (organization, statecode) => {
+    let apiKeyName = "NGP_VAN_API_KEY";
+    if (statecode) {
+      apiKeyName += "_" + statecode;
+    }
+
     const appName = getConfig("NGP_VAN_APP_NAME", organization);
-    const apiKey = getConfig("NGP_VAN_API_KEY", organization);
+    const apiKey = getConfig(apiKeyName, organization);
 
     if (!appName || !apiKey) {
       throw new Error(
-        "Environment missing NGP_VAN_APP_NAME or NGP_VAN_API_KEY"
+        `Environment missing NGP_VAN_APP_NAME or ${apiKeyName}`
       );
     }
 
