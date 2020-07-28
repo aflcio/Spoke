@@ -425,7 +425,7 @@ export class AdminCampaignEdit extends React.Component {
           ),
         blocksStarting: true,
         expandAfterCampaignStarts: true,
-        expandableBySuperVolunteers: true,
+        expandableBySuperVolunteers: false,
         extraProps: {
           customFields: this.props.campaignData.campaign.customFields,
           availableActions: this.props.organizationData.organization
@@ -439,7 +439,7 @@ export class AdminCampaignEdit extends React.Component {
         checkCompleted: () => true,
         blocksStarting: true,
         expandAfterCampaignStarts: true,
-        expandableBySuperVolunteers: true,
+        expandableBySuperVolunteers: false,
         extraProps: {
           customFields: this.props.campaignData.campaign.customFields
         }
