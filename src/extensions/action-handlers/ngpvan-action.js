@@ -67,6 +67,26 @@ export const postCanvassResponse = async (contact, organization, bodyInput) => {
   if (vanPhoneId) {
     body.canvassContext.phoneId = vanPhoneId;
   }
+
+  let statecode;
+  try {
+    statecode = JSON.parse(contact.custom_fields || "{}").statecode;
+  } catch (caughtException) {
+    // eslint-disable-next-line no-console
+    console.error(
+      `Error parsing custom_fields for contact ${contact.id} ${caughtException}`
+    );
+    return {};
+  }
+
+  if (!statecode) {
+    // eslint-disable-next-line no-console
+    console.error(
+      `Cannot sync results to van for campaign_contact ${contact.id}. No statecode in custom fields`
+    );
+    return {};
+  }
+
   const url = Van.makeUrl(`v4/people/${vanId}/canvassResponses`, organization);
 
   // eslint-disable-next-line no-console
@@ -80,7 +100,7 @@ export const postCanvassResponse = async (contact, organization, bodyInput) => {
     retries: 0,
     timeout: Van.getNgpVanTimeout(organization),
     headers: {
-      Authorization: Van.getAuth(organization),
+      Authorization: Van.getAuth(organization, statecode),
       "Content-Type": "application/json"
     },
     body: JSON.stringify(body),
@@ -362,8 +382,10 @@ export async function getClientChoiceData(organization) {
 // process.env.ACTION_HANDLERS
 export async function available(organization) {
   let result =
-    !!getConfig("NGP_VAN_API_KEY", organization) &&
-    !!getConfig("NGP_VAN_APP_NAME", organization);
+    (
+      !!getConfig("NGP_VAN_API_KEY_ENCRYPTED", organization) ||
+      !!getConfig("NGP_VAN_API_KEY", organization)
+    ) && !!getConfig("NGP_VAN_APP_NAME", organization);
 
   if (!result) {
     // eslint-disable-next-line no-console
