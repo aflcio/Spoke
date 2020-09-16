@@ -296,7 +296,7 @@ async function sendMessage(message, contact, trx, organization, campaign) {
       parseMessageText(message)
     );
 
-    console.log("twilioMessage", messageParams);
+    console.log("twilioMessage", `[To] ${messageParams.to} [Text] ${messageParams.body}`);
     if (APITEST) {
       let fakeErr = null;
       let fakeResponse = null;
@@ -356,12 +356,12 @@ export function postMessageSend(
         ...changes
       }
     : {};
-  log.info("postMessageSend", message, changes, response, err);
+  // log.info("postMessageSend", message, changes, response, err);
   let hasError = false;
   if (err) {
     hasError = true;
     log.error("Error sending message", err);
-    console.log("Error sending message", err);
+    // console.log("Error sending message", err);
   }
   if (response) {
     changesToSave.service_id = response.sid;
@@ -506,7 +506,7 @@ async function handleIncomingMessage(message) {
     const finalMessage = await convertMessagePartsToMessage([
       pendingMessagePart
     ]);
-    console.log("Contact reply", finalMessage, pendingMessagePart);
+    console.log("Contact reply", `[From] ${finalMessage.contact_number} [Text] ${finalMessage.text}`);
     if (finalMessage) {
       if (message.spokeCreatedAt) {
         finalMessage.created_at = message.spokeCreatedAt;
