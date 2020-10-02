@@ -168,6 +168,7 @@ const incomingMessageMatching = async (messageInstance, activeCellFound) => {
 
 const deliveryReport = async ({
   contactNumber,
+  userNumber,
   messageSid,
   service,
   messageServiceSid,
@@ -178,6 +179,9 @@ const deliveryReport = async ({
     service_response_at: new Date(),
     send_status: newStatus
   };
+  if (userNumber) {
+    changes.user_number = userNumber;
+  }
   if (newStatus === "ERROR") {
     changes.error_code = errorCode;
 
