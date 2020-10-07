@@ -54,7 +54,7 @@ export async function onTagUpdate(
 
   const url = getConfig("ZAPIER_WEBHOOK_URL", organization);
 
-  console.info(`Zapier onTagUpdate sending ${stringifiedPayload} to ${url}`);
+  log.info(`Zapier onTagUpdate sending ${stringifiedPayload} to ${url}`);
 
   return httpRequest(url, {
     method: "POST",

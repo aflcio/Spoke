@@ -2,6 +2,7 @@ import { assignmentRequiredOrAdminRole } from "../errors";
 import { cacheableData } from "../../models";
 import { jobRunner } from "../../../extensions/job-runners";
 import { Tasks } from "../../../workers/tasks";
+import log from "../../log";
 const ActionHandlers = require("../../../extensions/action-handlers");
 
 export const updateContactTags = async (
@@ -43,11 +44,10 @@ export const updateContactTags = async (
         });
       })
     ).catch(e =>
-      console.error("Dispatching to one or more tag handlers failed", e)
+      log.error("Dispatching to one or more tag handlers failed", e)
     );
   } catch (err) {
-    // eslint-disable-next-line no-console
-    console.error(
+    log.error(
       `Error saving tagCampaignContact for campaignContactID ${campaignContactId} tags ${tags}  error ${err}`
     );
     throw err;

@@ -4,6 +4,7 @@ import { parseCSVAsync } from "../../../workers/parse_csv";
 import { failedContactLoad } from "../../../workers/jobs";
 import HttpRequest from "../../../server/lib/http-request.js";
 import Van from "./util";
+import log from "../../../server/log";
 
 export const name = "ngpvan";
 
@@ -40,8 +41,7 @@ export const handleFailedContactLoad = async (
   ingestDataReference,
   message
 ) => {
-  // eslint-disable-next-line no-console
-  console.error(message);
+  log.error(message);
   await failedContactLoad(job, null, JSON.stringify(ingestDataReference), {
     errors: [message],
     ...ingestDataReference
@@ -63,7 +63,7 @@ export async function available(organization, user) {
     !!getConfig("NGP_VAN_WEBHOOK_BASE_URL", organization);
 
   if (!result) {
-    console.log(
+    log.info(
       "ngpvan contact loader unavailable. Missing one or more required environment variables."
     );
   }
@@ -83,7 +83,7 @@ export function addServerEndpoints(expressApp) {
     "/integration/ngpvan/ingest/:jobId/:maxContacts/:vanListId",
     function(req, res) {
       const { jobId, maxContacts, vanListId } = req.params;
-      console.log(
+      log.info(
         "Received callback from VAN with parameters: jobId, maxContacts, vanListId",
         jobId,
         maxContacts,
@@ -125,8 +125,7 @@ export async function getClientChoiceData(organization, campaign, user) {
     responseJson = await response.json();
   } catch (error) {
     const message = `Error retrieving saved list metadata from VAN ${error}`;
-    // eslint-disable-next-line no-console
-    console.log(message);
+    log.info(message);
     return { data: `${JSON.stringify({ error: message })}` };
   }
 

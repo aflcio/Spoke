@@ -1,6 +1,7 @@
 import { getConfig } from "../../../server/api/lib/config";
 import { r, cacheableData, Message } from "../../../server/models";
 import serviceMap from "../../../server/api/lib/services";
+import log from "../../../server/log";
 
 export const serverAdministratorInstructions = () => {
   return {
@@ -67,7 +68,7 @@ export const preMessageSave = async ({
       matchFailed = false;
     }
     if (matchFailed) {
-      console.log(
+      log.info(
         "initialtext-guard: detected different initial message",
         texter.id,
         contact.id,

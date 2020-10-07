@@ -2,6 +2,7 @@ import { mapFieldsToModel } from "./lib/utils";
 import { Assignment, r, cacheableData } from "../models";
 import { getOffsets, defaultTimezoneIsBetweenTextingHours } from "../../lib";
 import { getDynamicAssignmentBatchPolicies } from "../../extensions/dynamicassignment-batches";
+import log from "../log";
 
 export function addWhereClauseForContactsFilterMessageStatusIrrespectiveOfPastDue(
   queryParameter,
@@ -277,7 +278,7 @@ export const resolvers = {
             offset => true
           );
         }
-        console.log(
+        log.info(
           "assignment.contactsCount tzStatusCounts Data Match Failed",
           hasAny,
           contactsFilter,

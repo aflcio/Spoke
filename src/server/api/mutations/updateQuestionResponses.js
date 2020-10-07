@@ -161,7 +161,7 @@ export const updateQuestionResponses = async (
       questionResponsesStatus
     });
   } catch (e) {
-    console.error("Dispatching to one or more action handlers failed", e);
+    log.error("Dispatching to one or more action handlers failed", e);
   }
 
   return contact.id;

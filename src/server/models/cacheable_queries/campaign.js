@@ -6,6 +6,7 @@ import {
 } from "../../../lib/interaction-step-helpers";
 import { getFeatures } from "../../api/lib/config";
 import organizationCache from "./organization";
+import log from "../../log";
 
 // This should be cached data for a campaign that will not change
 // based on assignments or texter actions
@@ -60,7 +61,7 @@ const dbInteractionSteps = async id => {
     .filter({ is_deleted: false })
     .orderBy("id");
   const data = assembleAnswerOptions(allSteps);
-  // console.log("cacheabledata.campaign.dbInteractionSteps", id, data);
+  // log.info("cacheabledata.campaign.dbInteractionSteps", id, data);
   return data;
 };
 
@@ -75,7 +76,7 @@ const dbContactTimezones = async id =>
 
 const clear = async (id, campaign) => {
   if (r.redis) {
-    // console.log('clearing campaign cache')
+    // log.info('clearing campaign cache')
     await r.redis.delAsync(cacheKey(id));
   }
 };
@@ -84,11 +85,11 @@ const loadDeep = async id => {
   if (r.redis) {
     const campaign = await Campaign.get(id);
     if (Array.isArray(campaign) && campaign.length === 0) {
-      console.error("NO CAMPAIGN FOUND");
+      log.error("NO CAMPAIGN FOUND");
       return {};
     }
     if (campaign.is_archived) {
-      // console.log('campaign is_archived')
+      // log.info('campaign is_archived')
       // do not cache archived campaigns
       return campaign;
     }
@@ -103,11 +104,11 @@ const loadDeep = async id => {
       r.knex("campaign_contact").where("campaign_id", id)
     );
     // cache userIds for all assignments
-    // console.log('loaded deep campaign', JSON.stringify(campaign, null, 2))
+    // log.info('loaded deep campaign', JSON.stringify(campaign, null, 2))
     // We should only cache organization data
     // if/when we can clear it on organization data changes
     // campaign.organization = await organizationCache.load(campaign.organization_id)
-    // console.log('campaign loaddeep', campaign, JSON.stringify(campaign))
+    // log.info('campaign loaddeep', campaign, JSON.stringify(campaign))
     await r.redis
       .multi()
       .set(cacheKey(id), JSON.stringify(campaign))
@@ -146,17 +147,17 @@ const currentEditors = async (campaign, user) => {
 };
 
 const load = async (id, opts) => {
-  // console.log('campaign cache load', id)
+  // log.info('campaign cache load', id)
   if (r.redis) {
     let campaignData = await r.redis.getAsync(cacheKey(id));
     let campaignObj = campaignData ? JSON.parse(campaignData) : null;
-    // console.log('pre campaign cache', campaignObj)
+    // log.info('pre campaign cache', campaignObj)
     if (
       (opts && opts.forceLoad) ||
       !campaignObj ||
       !campaignObj.interactionSteps
     ) {
-      // console.log('no campaigndata', id, campaignObj)
+      // log.info('no campaigndata', id, campaignObj)
       const campaignNoCache = await loadDeep(id);
       if (campaignNoCache) {
         // archived or not found in db either
@@ -164,7 +165,7 @@ const load = async (id, opts) => {
       }
       campaignData = await r.redis.getAsync(cacheKey(id));
       campaignObj = campaignData ? JSON.parse(campaignData) : null;
-      // console.log('new campaign data', id, campaignData)
+      // log.info('new campaign data', id, campaignData)
     }
     if (campaignObj) {
       const counts = [
@@ -179,7 +180,7 @@ const load = async (id, opts) => {
         campaignObj[countName] = await r.redis.hgetAsync(countKey, countName);
       }
       campaignObj.feature = getFeatures(campaignObj);
-      // console.log('campaign cache', cacheKey(id), campaignObj, campaignData)
+      // log.info('campaign cache', cacheKey(id), campaignObj, campaignData)
       const campaign = modelWithExtraProps(campaignObj, Campaign, [
         "customFields",
         "feature",
@@ -249,13 +250,13 @@ const campaignCache = {
           .expire(infoKey, 432000) // counts stay 5 days for easier review
           .execAsync();
       } catch (err) {
-        console.log("campaign.updateAssignedCount Error", id, err);
+        log.info("campaign.updateAssignedCount Error", id, err);
       }
     }
   },
   incrCount: async (id, countType, countAmount) => {
     // countType={"messagedCount", "errorCount", "needsResposneCount", "assignedCount"}
-    // console.log("incrCount", id, countType, CONTACT_CACHE_ENABLED);
+    // log.info("incrCount", id, countType, CONTACT_CACHE_ENABLED);
     if (r.redis) {
       try {
         const infoKey = infoCacheKey(id);
@@ -269,7 +270,7 @@ const campaignCache = {
           .expire(infoKey, 432000) // counts stay 5 days for easier review
           .execAsync();
       } catch (err) {
-        console.log("campaign.incrMessaged Error", id, err);
+        log.info("campaign.incrMessaged Error", id, err);
       }
     }
   }

@@ -1,6 +1,7 @@
 import { completeContactLoad, getTimezoneByZip } from "../../workers/jobs";
 import { r, CampaignContact } from "../../server/models";
 import { updateJob } from "../../workers/lib";
+import log from "../../server/log";
 
 export const finalizeContactLoad = async (
   job,
@@ -36,7 +37,7 @@ export const finalizeContactLoad = async (
   }
   for (let index = 0; index < numChunks; index++) {
     await updateJob(job, Math.round((100 / numChunks) * index)).catch(err => {
-      console.error("Error updating job:", campaignId, job.id, err);
+      log.error("Error updating job:", campaignId, job.id, err);
     });
 
     const savePortion = contacts.slice(
@@ -44,7 +45,7 @@ export const finalizeContactLoad = async (
       (index + 1) * chunkSize
     );
 
-    console.log(`Working on importing chunk No: ${index}`);
+    log.info(`Working on importing chunk No: ${index}`);
     await r.knex.batchInsert("campaign_contact", savePortion);
   }
 

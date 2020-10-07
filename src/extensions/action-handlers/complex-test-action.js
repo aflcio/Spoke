@@ -1,5 +1,6 @@
 import request from "request";
 import { r } from "../../server/models";
+import log from "../../server/log";
 
 export const name = "complex-test-action";
 
@@ -65,7 +66,7 @@ export async function processAction({
 
 // What happens when a texter remotes an answer that triggers the action
 export async function processDeletedQuestionResponse(options) {
-  console.log(
+  log.info(
     `complex-test-action handler called with parameters ${JSON.stringify(
       options,
       "",

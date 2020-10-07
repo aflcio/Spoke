@@ -1,5 +1,6 @@
 import { r, OptOut } from "../../models";
 import campaignCache from "./campaign";
+import log from "../../log";
 
 // STRUCTURE
 // SET by organization, so optout-<organization_id> has a <cell> key
@@ -103,7 +104,7 @@ const optOutCache = {
       loadMany(organizationId)
         .then(optOutCount => {
           if (!global.TEST_ENVIRONMENT) {
-            console.log(
+            log.info(
               "optOutCache loaded for organization",
               organizationId,
               optOutCount
@@ -111,11 +112,7 @@ const optOutCache = {
           }
         })
         .catch(err => {
-          console.log(
-            "optOutCache Error for organization",
-            organizationId,
-            err
-          );
+          log.info("optOutCache Error for organization", organizationId, err);
         });
     }
     const dbResult = await r

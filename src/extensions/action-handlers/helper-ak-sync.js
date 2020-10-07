@@ -1,4 +1,5 @@
 import request from "request";
+import log from "../../server/log";
 
 const akAddUserUrl = process.env.AK_ADD_USER_URL;
 const akAddPhoneUrl = process.env.AK_ADD_PHONE_URL;
@@ -61,6 +62,6 @@ export const actionKitSignup = contact => {
       }
     );
   } else {
-    console.log("No AK Post URLs Configured");
+    log.info("No AK Post URLs Configured");
   }
 };
