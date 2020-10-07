@@ -1,4 +1,5 @@
 import { getConfig } from "../../../server/api/lib/config";
+import log from "../../../server/log";
 const Van = require("../../../extensions/action-handlers/ngpvan-action");
 
 import { getActionChoiceData } from "../../../extensions/action-handlers";
@@ -21,10 +22,9 @@ export const serverAdministratorInstructions = () => {
 };
 
 export const available = organization =>
-  (
-    !!getConfig("NGP_VAN_API_KEY_ENCRYPTED", organization) ||
-    !!getConfig("NGP_VAN_API_KEY", organization)
-  ) && !!getConfig("NGP_VAN_APP_NAME", organization);
+  (!!getConfig("NGP_VAN_API_KEY_ENCRYPTED", organization) ||
+    !!getConfig("NGP_VAN_API_KEY", organization)) &&
+  !!getConfig("NGP_VAN_APP_NAME", organization);
 
 // export const preMessageSave = async () => {};
 
@@ -48,11 +48,7 @@ export const postMessageSave = async ({ contact, organization }) => {
   return Van.postCanvassResponse(contact, organization, body)
     .then(() => {})
     .catch(caughtError => {
-      // eslint-disable-next-line no-console
-      console.error(
-        "Encountered exception in ngpvan.postMessageSave",
-        caughtError
-      );
+      log.error("Encountered exception in ngpvan.postMessageSave", caughtError);
       return {};
     });
 };

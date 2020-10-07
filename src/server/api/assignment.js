@@ -1,7 +1,9 @@
 import { mapFieldsToModel } from "./lib/utils";
+import { getConfig } from "./lib/config";
 import { Assignment, r, cacheableData } from "../models";
 import { getOffsets, defaultTimezoneIsBetweenTextingHours } from "../../lib";
 import { getDynamicAssignmentBatchPolicies } from "../../extensions/dynamicassignment-batches";
+import log from "../log";
 
 export function addWhereClauseForContactsFilterMessageStatusIrrespectiveOfPastDue(
   queryParameter,
@@ -29,6 +31,11 @@ export function addWhereClauseForContactsFilterMessageStatusIrrespectiveOfPastDu
       );
   } else {
     query.whereIn("message_status", messageStatusFilter.split(","));
+  }
+  if (getConfig("CONVERSATIONS_RECENT")) {
+    query.whereRaw(
+      "campaign_contact.id > (SELECT max(id)-20000000 from campaign_contact)"
+    );
   }
   return query;
 }
@@ -277,7 +284,7 @@ export const resolvers = {
             offset => true
           );
         }
-        console.log(
+        log.info(
           "assignment.contactsCount tzStatusCounts Data Match Failed",
           hasAny,
           contactsFilter,

@@ -8,7 +8,8 @@ import {
   UserOrganization
 } from "../server/models";
 import telemetry from "../server/telemetry";
-import { log, gunzip, zipToTimeZone, convertOffsetsToStrings } from "../lib";
+import { gunzip, zipToTimeZone, convertOffsetsToStrings } from "../lib";
+import log from "../server/log";
 import { sleep, updateJob } from "./lib";
 import serviceMap from "../server/api/lib/services";
 import twilio from "../server/api/lib/twilio";
@@ -28,7 +29,7 @@ import { getConfig } from "../server/api/lib/config";
 import { invokeTaskFunction, Tasks } from "./tasks";
 
 const defensivelyDeleteOldJobsForCampaignJobType = async job => {
-  console.log("job", job);
+  log.info("job", job);
   let retries = 0;
   const doDelete = async () => {
     try {
@@ -42,7 +43,7 @@ const defensivelyDeleteOldJobsForCampaignJobType = async job => {
         retries += 1;
         await doDelete();
       } else
-        console.error(`Could not delete campaign/jobType. Err: ${err.message}`);
+        log.error(`Could not delete campaign/jobType. Err: ${err.message}`);
     }
   };
 
@@ -62,7 +63,7 @@ const defensivelyDeleteJob = async job => {
         if (retries < 5) {
           retries += 1;
           await deleteJob();
-        } else console.error(`Could not delete job. Err: ${err.message}`);
+        } else log.error(`Could not delete job. Err: ${err.message}`);
       }
     };
 
@@ -110,20 +111,20 @@ export async function getTimezoneByZip(zip) {
 export async function sendJobToAWSLambda(job) {
   // job needs to be json-serializable
   // requires a 'command' key which should map to a function in job-processes.js
-  console.log(
+  log.info(
     "LAMBDA INVOCATION STARTING",
     job,
     process.env.AWS_LAMBDA_FUNCTION_NAME
   );
 
   if (!job.command) {
-    console.log("LAMBDA INVOCATION FAILED: JOB NOT INVOKABLE", job);
+    log.info("LAMBDA INVOCATION FAILED: JOB NOT INVOKABLE", job);
     return Promise.reject("Job type not available in job-processes");
   }
   const lambda = new AWS.Lambda();
   const lambdaPayload = JSON.stringify(job);
   if (lambdaPayload.length > 128000) {
-    console.log("LAMBDA INVOCATION FAILED PAYLOAD TOO LARGE");
+    log.info("LAMBDA INVOCATION FAILED PAYLOAD TOO LARGE");
     return Promise.reject("Payload too large");
   }
 
@@ -136,14 +137,14 @@ export async function sendJobToAWSLambda(job) {
       },
       (err, data) => {
         if (err) {
-          console.log("LAMBDA INVOCATION FAILED", err, job);
+          log.info("LAMBDA INVOCATION FAILED", err, job);
           reject(err);
         } else {
           resolve(data);
         }
       }
     );
-    console.log("LAMBDA INVOCATION RESULT", result);
+    log.info("LAMBDA INVOCATION RESULT", result);
   });
   return p;
 }
@@ -173,7 +174,7 @@ export async function processSqsMessages(TWILIO_SQS_QUEUE_URL) {
   const p = new Promise((resolve, reject) => {
     sqs.receiveMessage(params, async (err, data) => {
       if (err) {
-        console.log("processSqsMessages Error", err, err.stack);
+        log.info("processSqsMessages Error", err, err.stack);
         reject(err);
       } else {
         if (!data.Messages || !data.Messages.length) {
@@ -181,12 +182,12 @@ export async function processSqsMessages(TWILIO_SQS_QUEUE_URL) {
           await sleep(10000);
           resolve();
         } else {
-          console.log("processSqsMessages", data.Messages.length);
+          log.info("processSqsMessages", data.Messages.length);
           for (let i = 0; i < data.Messages.length; i++) {
             const message = data.Messages[i];
             const body = message.Body;
             if (process.env.DEBUG) {
-              console.log("processSqsMessages message body", body);
+              log.info("processSqsMessages message body", body);
             }
             const twilioMessage = JSON.parse(body);
             await serviceMap.twilio.handleIncomingMessage(twilioMessage);
@@ -198,7 +199,7 @@ export async function processSqsMessages(TWILIO_SQS_QUEUE_URL) {
               .promise()
               .catch(reject);
             if (process.env.DEBUG) {
-              console.log("processSqsMessages deleteresult", delMessageData);
+              log.info("processSqsMessages deleteresult", delMessageData);
             }
           }
           resolve();
@@ -216,7 +217,7 @@ export async function dispatchContactIngestLoad(job, organization) {
   }
   const ingestMethod = rawIngestMethod(job.job_type.replace("ingest.", ""));
   if (!ingestMethod) {
-    console.error(
+    log.error(
       "dispatchContactIngestLoad not found. invalid job type",
       job.job_type
     );
@@ -288,10 +289,10 @@ export async function completeContactLoad(
     .delete()
     .then(result => {
       deleteOptOutCells = result;
-      console.log("Deleted opt-outs: " + deleteOptOutCells);
+      log.info("Deleted opt-outs: " + deleteOptOutCells);
     })
     .catch(err => {
-      console.log("Error deleting opt-outs:", campaignId, err);
+      log.info("Error deleting opt-outs:", campaignId, err);
     });
 
   // delete duplicate cells (last wins)
@@ -309,11 +310,11 @@ export async function completeContactLoad(
     .delete()
     .then(result => {
       deleteDuplicateCells = result;
-      console.log("Deduplication result", campaignId, result);
+      log.info("Deduplication result", campaignId, result);
     })
     .catch(err => {
       deleteDuplicateCells = -1;
-      console.error("Failed deduplication", campaignId, err);
+      log.error("Failed deduplication", campaignId, err);
     });
 
   const finalContactCount = await r.getCount(
@@ -432,7 +433,7 @@ export async function assignTexters(job) {
 
   const payload = JSON.parse(job.payload);
   const cid = job.campaign_id;
-  console.log("assignTexters1", cid, payload);
+  log.info("assignTexters1", cid, payload);
   const campaign = (await r.knex("campaign").where({ id: cid }))[0];
   const texters = payload.texters;
   const currentAssignments = await r
@@ -642,7 +643,7 @@ export async function assignTexters(job) {
   }
 
   if (campaign.is_started) {
-    console.log("assignTexterscache1", job.campaign_id);
+    log.info("assignTexterscache1", job.campaign_id);
     await cacheableData.campaignContact.updateCampaignAssignmentCache(
       job.campaign_id
     );
@@ -685,119 +686,94 @@ export async function exportCampaign(job) {
       allQuestions[step.id] = step.question;
     }
   });
+  const questionResponses = await r
+    .knexReadOnly("question_response")
+    .join("campaign_contact", "campaign_contact.id", "campaign_contact_id")
+    .where("campaign_id", campaign.id)
+    .select("campaign_contact_id", "interaction_step_id", "value");
 
-  let finalCampaignResults = [];
-  let finalCampaignMessages = [];
-  const assignments = await r
-    .knex("assignment")
-    .where("campaign_id", id)
-    .join("user", "user_id", "user.id")
-    .select(
-      "assignment.id as id",
-      // user fields
-      "first_name",
-      "last_name",
-      "email",
-      "cell",
-      "assigned_cell"
-    );
-  const assignmentCount = assignments.length;
+  const tags = await r
+    .knexReadOnly("tag_campaign_contact")
+    .join("campaign_contact", "campaign_contact.id", "campaign_contact_id")
+    .join("tag", "tag.id", "tag_id")
+    .where("campaign_id", campaign.id)
+    .select("campaign_contact_id", "name");
 
-  for (let index = 0; index < assignmentCount; index++) {
-    const assignment = assignments[index];
-    const optOuts = await r
-      .table("opt_out")
-      .getAll(assignment.id, { index: "assignment_id" });
+  const contacts = await r
+    .knexReadOnly("campaign_contact")
+    .join("assignment", "campaign_contact.assignment_id", "assignment.id")
+    .join("user", "assignment.user_id", "user.id")
+    .leftJoin("zip_code", "zip_code.zip", "campaign_contact.zip")
+    .column([
+      "campaign_contact.id",
+      "campaign_contact.campaign_id",
+      "campaign_contact.assignment_id",
+      {texterFirst: "user.first_name"},
+      {texterLast: "user.last_name"},
+      {texterEmail: "user.email"},
+      {texterCell: "user.cell"},
+      {texterAlias: "user.alias"},
+      "user.extra",
+      "campaign_contact.external_id",
+      "campaign_contact.first_name",
+      "campaign_contact.last_name",
+      "campaign_contact.cell",
+      "zip_code.city",
+      "zip_code.state",
+      "campaign_contact.zip",
+      "campaign_contact.custom_fields",
+      "campaign_contact.is_opted_out",
+      "campaign_contact.message_status",
+      "campaign_contact.error_code",
+    ])
+    .select()
+    .where("campaign_contact.campaign_id", campaign.id);
 
-    const contacts = await r
-      .knex("campaign_contact")
-      .leftJoin("zip_code", "zip_code.zip", "campaign_contact.zip")
-      .select()
-      .where("assignment_id", assignment.id);
-    const messages = await r
-      .knex("message")
-      .leftJoin(
-        "campaign_contact",
-        "campaign_contact.id",
-        "message.campaign_contact_id"
-      )
-      .select("message.*", "campaign_contact.assignment_id")
-      .where("campaign_contact.assignment_id", assignment.id);
-    let convertedMessages = messages.map(message => {
-      const messageRow = {
-        assignmentId: message.assignment_id,
-        campaignId: campaign.id,
-        userNumber: message.user_number,
-        contactNumber: message.contact_number,
-        isFromContact: message.is_from_contact,
-        sendStatus: message.send_status,
-        attemptedAt: moment(message.created_at).toISOString(),
-        text: message.text,
-        errorCode: message.error_code
-      };
-      return messageRow;
+  contacts.forEach((row, index) => {
+    // Split Custom fields into columns
+    const customFields = JSON.parse(row.custom_fields);
+    delete row.custom_fields;
+
+    // Add question response columns
+    const responses = {};
+    Object.keys(allQuestions).forEach(stepId => {
+      const {value=""} = questionResponses.find(response => {
+        return response.campaign_contact_id === row.id
+          && response.interaction_step_id === Number(stepId)
+      }) || {};
+      responses[`question[${allQuestions[stepId]}]`] = value;
     });
 
-    convertedMessages = await Promise.all(convertedMessages);
-    finalCampaignMessages = finalCampaignMessages.concat(convertedMessages);
-    let convertedContacts = contacts.map(async contact => {
-      const tags = await r
-        .knex("tag_campaign_contact")
-        .where("campaign_contact_id", contact.id)
-        .leftJoin("tag", "tag.id", "tag_campaign_contact.tag_id");
+    contacts[index] = {
+      ...row,
+      ...customFields,
+      tags: tags.reduce((acc, cur) => {
+        if (cur.campaign_contact_id == row.id)
+          acc.push(cur.name)
+        }, []),
+      ...responses
+    }
+  });
 
-      const contactRow = {
-        campaignId: campaign.id,
-        campaign: campaign.title,
-        assignmentId: assignment.id,
-        "texter[firstName]": assignment.first_name,
-        "texter[lastName]": assignment.last_name,
-        "texter[email]": assignment.email,
-        "texter[cell]": assignment.cell,
-        "texter[assignedCell]": assignment.assigned_cell,
-        "contact[firstName]": contact.first_name,
-        "contact[lastName]": contact.last_name,
-        "contact[cell]": contact.cell,
-        "contact[zip]": contact.zip,
-        "contact[city]": contact.city ? contact.city : null,
-        "contact[state]": contact.state ? contact.state : null,
-        "contact[optOut]": optOuts.find(ele => ele.cell === contact.cell)
-          ? "true"
-          : "false",
-        "contact[optOutRecord]": contact.is_opted_out,
-        "contact[messageStatus]": contact.message_status,
-        "contact[errorCode]": contact.error_code,
-        "contact[external_id]": contact.external_id,
-        "contact[tags]": tags.length > 0 ? tags.map(tag => tag.name) : null
-      };
-      const customFields = JSON.parse(contact.custom_fields);
-      Object.keys(customFields).forEach(fieldName => {
-        contactRow[`contact[${fieldName}]`] = customFields[fieldName];
-      });
+  const messages = await r
+    .knexReadOnly("message")
+    .join("campaign_contact", "campaign_contact.id", "campaign_contact_id")
+    .column([
+      "campaign_contact_id",
+      "campaign_id",
+      "user_number",
+      "contact_number",
+      "is_from_contact",
+      "send_status",
+      { attempted_at: "message.created_at"},
+      "text",
+      "message.error_code"
+    ])
+    .select()
+    .where("campaign_contact.campaign_id", campaign.id);
 
-      const questionResponses = await r
-        .table("question_response")
-        .getAll(contact.id, { index: "campaign_contact_id" });
-
-      Object.keys(allQuestions).forEach(stepId => {
-        let value = "";
-        questionResponses.forEach(response => {
-          if (response.interaction_step_id === parseInt(stepId, 10)) {
-            value = response.value;
-          }
-        });
-
-        contactRow[`question[${allQuestions[stepId]}]`] = value;
-      });
-
-      return contactRow;
-    });
-    convertedContacts = await Promise.all(convertedContacts);
-    finalCampaignResults = finalCampaignResults.concat(convertedContacts);
-    await updateJob(job, Math.round((index / assignmentCount) * 100));
-  }
-  const campaignCsv = Papa.unparse(finalCampaignResults);
-  const messageCsv = Papa.unparse(finalCampaignMessages);
+  const campaignCsv = Papa.unparse(contacts);
+  const messageCsv = Papa.unparse(messages);
 
   if (
     getConfig("AWS_ACCESS_AVAILABLE") ||
@@ -857,18 +833,19 @@ export async function exportCampaign(job) {
 
   await defensivelyDeleteJob(job);
 }
+
 export async function importScript(job) {
   const payload = await unzipPayload(job);
   try {
     await defensivelyDeleteOldJobsForCampaignJobType(job);
     await importScriptFromDocument(payload.campaignId, payload.url); // TODO try/catch
-    console.log(`Script import complete ${payload.campaignId} ${payload.url}`);
+    log.info(`Script import complete ${payload.campaignId} ${payload.url}`);
   } catch (exception) {
     await r
       .knex("job_request")
       .where("id", job.id)
       .update({ result_message: exception.message });
-    console.warn(exception.message);
+    log.warn(exception.message);
     return;
   }
   defensivelyDeleteJob(job);
@@ -911,7 +888,7 @@ export async function sendMessages(queryFunc, defaultStatus) {
     } catch (err) {
       // Unable to obtain lock on these rows meaning another process must be
       // sending them. We will exit gracefully in that case.
-      console.info("LOCKED ROWS", err);
+      log.info("LOCKED ROWS", err);
       trx.rollback();
       return 0;
     }
@@ -956,18 +933,18 @@ export async function sendMessages(queryFunc, defaultStatus) {
           pastMessages.push(message.id);
           pastMessages = pastMessages.slice(-100); // keep the last 100
         } catch (err) {
-          console.error("Failed sendMessage", err);
+          log.error("Failed sendMessage", err);
         }
         trySendCount += 1;
       }
       await trx.commit();
     } catch (err) {
-      console.error("Error sending messages:", err);
+      log.error("Error sending messages:", err);
       await trx.rollback();
     }
   } catch (err) {
-    console.log("sendMessages transaction errored:");
-    console.error(err);
+    log.info("sendMessages transaction errored:");
+    log.error(err);
   }
   return trySendCount;
 }
@@ -1090,8 +1067,8 @@ export async function loadMessages(csvFile) {
       header: true,
       complete: ({ data, meta, errors }, file) => {
         const fields = meta.fields;
-        console.log("FIELDS", fields);
-        console.log("FIRST LINE", data[0]);
+        log.info("FIELDS", fields);
+        log.info("FIRST LINE", data[0]);
         const promises = [];
         data.forEach(row => {
           if (!row.contact_number) {
@@ -1108,14 +1085,14 @@ export async function loadMessages(csvFile) {
           };
           promises.push(serviceMap.twilio.handleIncomingMessage(twilioMessage));
         });
-        console.log("Started all promises for CSV");
+        log.info("Started all promises for CSV");
         Promise.all(promises)
           .then(doneDid => {
-            console.log(`Processed ${doneDid.length} rows for CSV`);
+            log.info(`Processed ${doneDid.length} rows for CSV`);
             resolve(doneDid);
           })
           .catch(err => {
-            console.error("Error processing for CSV", err);
+            log.error("Error processing for CSV", err);
             reject(err);
           });
       }
@@ -1140,9 +1117,9 @@ export async function fixOrgless() {
         role: "TEXTER"
       }).error(function(error) {
         // Unexpected errors
-        console.log("error on userOrganization save in orgless", error);
+        log.info("error on userOrganization save in orgless", error);
       });
-      console.log(
+      log.info(
         "added orgless user " +
           orglessUser.id +
           " to organization " +
@@ -1222,7 +1199,7 @@ async function prepareTwilioCampaign(campaign, organization, trx) {
       allocated_to_id: campaign.id.toString()
     })
     .map(row => row.service_id);
-  console.log(`Transferring ${phoneSids.length} numbers to ${msgSrvSid}`);
+  log.info(`Transferring ${phoneSids.length} numbers to ${msgSrvSid}`);
   try {
     await twilio.addNumbersToMessagingService(
       organization,
@@ -1230,7 +1207,7 @@ async function prepareTwilioCampaign(campaign, organization, trx) {
       msgSrvSid
     );
   } catch (e) {
-    console.error("Failed to add numbers to messaging service", e);
+    log.error("Failed to add numbers to messaging service", e);
     await twilio.deleteMessagingService(organization, msgSrvSid);
     throw new Error("Failed to add numbers to messaging service");
   }
@@ -1300,7 +1277,7 @@ export async function startCampaignWithPhoneNumbers(job) {
       campaign: reloadedCampaign
     });
   } catch (e) {
-    console.error(`Job ${job.id} failed: ${e.message}`, e);
+    log.error(`Job ${job.id} failed: ${e.message}`, e);
   } finally {
     await defensivelyDeleteJob(job);
   }

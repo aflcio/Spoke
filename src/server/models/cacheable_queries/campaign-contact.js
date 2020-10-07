@@ -1,4 +1,5 @@
 import { r, CampaignContact } from "../../models";
+import log from "../../log";
 import telemetry from "../../telemetry";
 import campaignCache from "./campaign";
 import optOutCache from "./opt-out";
@@ -212,7 +213,7 @@ const campaignContactCache = {
     if (r.redis && CONTACT_CACHE_ENABLED) {
       const cacheRecord = await r.redis.getAsync(cacheKey(id));
       if (cacheRecord) {
-        // console.log('contact cacheRecord', cacheRecord)
+        // log.info('contact cacheRecord', cacheRecord)
         const cacheData = JSON.parse(cacheRecord);
         if (cacheData.cell && cacheData.organization_id) {
           cacheData.is_opted_out = await optOutCache.query({
@@ -264,7 +265,7 @@ const campaignContactCache = {
     ) {
       return;
     }
-    console.log("campaign-contact loadMany", campaign.id);
+    log.info("campaign-contact loadMany", campaign.id);
     // 1. load the data
     let query = r
       .knex("campaign_contact")
@@ -306,7 +307,7 @@ const campaignContactCache = {
       cacheSaver._write = (dbRecord, enc, next) => {
         // Note: non-async land
         if (dbRecord.id % 1000 === 0) {
-          console.log("contact loadMany contacts", campaign.id, dbRecord.id);
+          log.info("contact loadMany contacts", campaign.id, dbRecord.id);
         }
         saveCacheRecord(
           dbRecord,
@@ -330,7 +331,7 @@ const campaignContactCache = {
             next();
           },
           err => {
-            console.error("FAILED CONTACT CACHE SAVE", err);
+            log.error("FAILED CONTACT CACHE SAVE", err);
             stream.end();
             next();
           }
@@ -348,7 +349,7 @@ const campaignContactCache = {
         organizationId: String((organization && organization.id) || "")
       });
     }
-    console.log("contact loadMany finish stream", campaign.id);
+    log.info("contact loadMany finish stream", campaign.id);
   },
   orgId: async contact =>
     contact.organization_id ||
@@ -366,7 +367,7 @@ const campaignContactCache = {
       const cellData = await r.redis.getAsync(
         cellTargetKey(cell, messageServiceSid)
       );
-      // console.log('lookupByCell cache', cell, service, messageServiceSid, cellData)
+      // log.info('lookupByCell cache', cell, service, messageServiceSid, cellData)
       if (cellData) {
         // eslint-disable-next-line camelcase
         const [
@@ -448,7 +449,7 @@ const campaignContactCache = {
       await campaignCache.updateAssignedCount(campaignId);
     }
     if (r.redis && CONTACT_CACHE_ENABLED) {
-      // console.log("updateCampaignAssignmentCache", campaignId, contactIds);
+      // log.info("updateCampaignAssignmentCache", campaignId, contactIds);
       // We do NOT delete current cache as mostly people are re-assigned.
       // When people are zero-d out, then the assignments themselves are deleted
       // await r.redis.delAsync(assignmentKey);
@@ -466,11 +467,11 @@ const campaignContactCache = {
         setCacheContactAssignment(dbRecord.id, campaignId, dbRecord)
       );
       const data = await Promise.all(promises);
-      console.log("updateCampaignAssignmentCache", data[0], data.length);
+      log.info("updateCampaignAssignmentCache", data[0], data.length);
     }
   },
   updateStatus: async (contact, newStatus, moreUpdates) => {
-    // console.log('updateSTATUS', newStatus, contact)
+    // log.info('updateSTATUS', newStatus, contact)
     try {
       await r
         .knex("campaign_contact")
@@ -488,7 +489,7 @@ const campaignContactCache = {
         //       added on to the contact object from message.save
         // Other contexts don't really need to update the cell key -- just the status
         const cellKey = cellTargetKey(contact.cell, contact.messageservice_sid);
-        // console.log('contact updateStatus', cellKey, newStatus, contact)
+        // log.info('contact updateStatus', cellKey, newStatus, contact)
         let redisQuery = r.redis
           .multi()
           // We update the cell info on status updates, because this happens
@@ -515,7 +516,7 @@ const campaignContactCache = {
         //await updateAssignmentContact(contact, newStatus);
       }
     } catch (err) {
-      console.log("contact updateStatus Error", newStatus, contact, err);
+      log.info("contact updateStatus Error", newStatus, contact, err);
     }
   }
 };

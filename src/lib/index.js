@@ -19,8 +19,6 @@ export {
 export { getProcessEnvTz } from "./tz-helpers";
 export { DstHelper } from "./dst-helper";
 export { isClient } from "./is-client";
-import { log } from "./log";
-export { log };
 export {
   findParent,
   getInteractionPath,

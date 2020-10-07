@@ -7,6 +7,7 @@ import { gzip, makeTree, getHighestRole } from "../../lib";
 import { capitalizeWord, groupCannedResponses } from "./lib/utils";
 import twilio from "./lib/twilio";
 import ownedPhoneNumber from "./lib/owned-phone-number";
+import log from "../log";
 
 import { getIngestMethod } from "../../extensions/contact-loaders";
 import {
@@ -271,7 +272,7 @@ async function editCampaign(id, campaign, loaders, user, origCampaignRecord) {
           ingest_success: null
         });
     } else {
-      console.error("ingestMethod unavailable", campaign.ingestMethod);
+      log.error("ingestMethod unavailable", campaign.ingestMethod);
     }
   }
 
@@ -400,7 +401,7 @@ async function editCampaign(id, campaign, loaders, user, origCampaignRecord) {
     campaignUpdates.description.endsWith("..")
   ) {
     // some asynchronous cache-priming
-    console.log(
+    log.info(
       "force-loading loadCampaignCache",
       campaignRefreshed,
       organization
@@ -1146,7 +1147,7 @@ const rootMutations = {
           updatedContacts[c.id] = c;
         });
       }
-      console.log("getAssignedContacts", contacts.length, updatedContacts);
+      log.info("getAssignedContacts", contacts.length, updatedContacts);
       const finalContacts = contacts
         .map(c => c && (updatedContacts[c.id] || c))
         .map(hasAssn);
@@ -1181,7 +1182,7 @@ const rootMutations = {
       );
       const campaign = await loaders.campaign.load(contact.campaign_id);
 
-      console.log(
+      log.info(
         "createOptOut",
         campaignContactId,
         contact.campaign_id,
@@ -1193,7 +1194,7 @@ const rootMutations = {
         contact.assignment_id,
         contact
       );
-      console.log(
+      log.info(
         "createOptOut post access",
         campaignContactId,
         contact.campaign_id
@@ -1207,7 +1208,7 @@ const rootMutations = {
         campaign,
         noReply
       });
-      console.log(
+      log.info(
         "createOptOut post save",
         campaignContactId,
         contact.campaign_id
@@ -1250,7 +1251,12 @@ const rootMutations = {
       { user }
     ) => {
       // verify permissions
-      await accessRequired(user, organizationId, "SUPERVOLUNTEER", /* superadmin*/ true);
+      await accessRequired(
+        user,
+        organizationId,
+        "SUPERVOLUNTEER",
+        /* superadmin*/ true
+      );
 
       // group contactIds by campaign
       // group messages by campaign
@@ -1283,7 +1289,12 @@ const rootMutations = {
       { user }
     ) => {
       // verify permissions
-      await accessRequired(user, organizationId, "SUPERVOLUNTEER", /* superadmin*/ true);
+      await accessRequired(
+        user,
+        organizationId,
+        "SUPERVOLUNTEER",
+        /* superadmin*/ true
+      );
       const { campaignIdContactIdsMap } = await getCampaignIdContactIdsMaps(
         organizationId,
         {

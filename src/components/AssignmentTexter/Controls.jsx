@@ -28,7 +28,6 @@ import {
   getAvailableInteractionSteps,
   getTopMostParent,
   interactionStepForId,
-  log,
   isBetweenTextingHours
 } from "../../lib";
 

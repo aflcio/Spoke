@@ -14,7 +14,6 @@ import Dialog from "material-ui/Dialog";
 import CannedResponseForm from "../CannedResponseForm";
 import GSSubmitButton from "../forms/GSSubmitButton";
 import Form from "react-formal";
-import { log } from "../../lib";
 
 // import { insert, update, remove } from '../../api/scripts/methods'
 
@@ -68,7 +67,7 @@ class ScriptList extends React.Component {
       try {
         await onCreateCannedResponse({ cannedResponse });
       } catch (err) {
-        log.error(err);
+        console.error(err);
       }
     };
 

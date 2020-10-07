@@ -9,7 +9,7 @@ import {
   cacheableData,
   Campaign
 } from "../../models";
-import { log } from "../../../lib";
+import log from "../../log";
 import wrap from "../../wrap";
 import { saveNewIncomingMessage } from "./message-sending";
 import { getConfig } from "./config";
@@ -157,11 +157,24 @@ async function convertMessagePartsToMessage(messageParts) {
     .map(serviceMessage => serviceMessage.Body)
     .join("")
     .replace(/\0/g, ""); // strip all UTF-8 null characters (0x00)
+  const media = serviceMessages
+    .map(serviceMessage => {
+      const mediaItems = [];
+      for (let m = 0; m < Number(serviceMessage.NumMedia); m++) {
+        mediaItems.push({
+          type: serviceMessage[`MediaContentType${m}`],
+          url: serviceMessage[`MediaUrl${m}`]
+        });
+      }
+      return mediaItems;
+    })
+    .reduce((acc, val) => acc.concat(val), []); // flatten array
   return new Message({
     contact_number: contactNumber,
     user_number: userNumber,
     is_from_contact: true,
     text,
+    media,
     error_code: null,
     service_id: firstPart.service_id,
     // will be set during cacheableData.message.save()
@@ -298,7 +311,10 @@ async function sendMessage(message, contact, trx, organization, campaign) {
       parseMessageText(message)
     );
 
-    console.log("twilioMessage", `[To] ${messageParams.to} [Text] ${messageParams.body}`);
+    log.info(
+      "twilioMessage",
+      `[To] ${messageParams.to} [Text] ${messageParams.body}`
+    );
     if (APITEST) {
       let fakeErr = null;
       let fakeResponse = null;
@@ -363,7 +379,6 @@ export function postMessageSend(
   if (err) {
     hasError = true;
     log.error("Error sending message", err);
-    // console.log("Error sending message", err);
   }
   if (response) {
     changesToSave.service_id = response.sid;
@@ -403,7 +418,7 @@ export function postMessageSend(
     updateQuery = updateQuery.update(changesToSave);
 
     Promise.all([updateQuery, contactUpdateQuery]).then(() => {
-      console.log("Saved message error status", changesToSave, err);
+      log.info("Saved message error status", changesToSave, err);
       reject(
         err ||
           (response
@@ -432,7 +447,7 @@ export function postMessageSend(
         });
       })
       .catch(err => {
-        console.error(
+        log.error(
           "Failed message and contact update on twilio postMessageSend",
           err
         );
@@ -510,7 +525,10 @@ async function handleIncomingMessage(message) {
     const finalMessage = await convertMessagePartsToMessage([
       pendingMessagePart
     ]);
-    console.log("Contact reply", `[From] ${finalMessage.contact_number} [Text] ${finalMessage.text}`);
+    log.info(
+      "Contact reply",
+      `[From] ${finalMessage.contact_number} [Text] ${finalMessage.text}`
+    );
     if (finalMessage) {
       if (message.spokeCreatedAt) {
         finalMessage.created_at = message.spokeCreatedAt;
@@ -708,7 +726,7 @@ async function addNumbersToMessagingService(
 
 async function deleteMessagingService(organization, messagingServiceSid) {
   const twilioInstance = await getTwilio(organization);
-  console.log("Deleting messaging service", messagingServiceSid);
+  log.info("Deleting messaging service", messagingServiceSid);
   return twilioInstance.messaging.services(messagingServiceSid).remove();
 }
 

@@ -1,6 +1,7 @@
 import { saveJob } from "./helpers";
 import { invokeJobFunction } from "../../workers/job-processes";
 import { invokeTaskFunction } from "../../workers/tasks";
+import log from "../../server/log";
 
 const JOBS_SAME_PROCESS = !!(
   process.env.JOBS_SAME_PROCESS || global.JOBS_SAME_PROCESS
@@ -32,7 +33,7 @@ export const dispatchJob = async (
       await invokeJobFunction(job);
     } else {
       // Intentionally un-awaited promise
-      invokeJobFunction(job).catch(err => console.log("Job failed", job, err));
+      invokeJobFunction(job).catch(err => log.error("Job failed", job, err));
     }
   }
   return job;
@@ -46,7 +47,7 @@ export const dispatchTask = async (taskName, payload) => {
   } else {
     // fire and forget
     invokeTaskFunction(taskName, payload).catch(err =>
-      console.log(`Task ${taskName} failed`, err)
+      log.error(`Task ${taskName} failed`, err)
     );
   }
 };

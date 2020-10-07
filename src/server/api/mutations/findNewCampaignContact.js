@@ -1,4 +1,4 @@
-import { log } from "../../../lib";
+import log from "../../log";
 import telemetry from "../../telemetry";
 import { Assignment, Campaign, r, cacheableData } from "../../models";
 import { assignmentRequiredOrAdminRole } from "../errors";

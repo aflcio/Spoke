@@ -6,6 +6,7 @@ import { getSendBeforeTimeUtc } from "../../../lib/timezones";
 import { jobRunner } from "../../../extensions/job-runners";
 import { Tasks } from "../../../workers/tasks";
 import { updateContactTags } from "./updateContactTags";
+import log from "../../log";
 
 const JOBS_SAME_PROCESS = !!(
   process.env.JOBS_SAME_PROCESS || global.JOBS_SAME_PROCESS
@@ -29,7 +30,7 @@ export const sendMessage = async (
     contact.assignment_id !== parseInt(message.assignmentId) ||
     campaign.is_archived
   ) {
-    console.error("Error: assignment changed");
+    log.error("Error: assignment changed");
     throw newError("Your assignment has changed", "SENDERR_ASSIGNMENTCHANGED");
   }
   const organization = await loaders.organization.load(

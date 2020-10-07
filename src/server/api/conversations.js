@@ -2,7 +2,7 @@ import _ from "lodash";
 import { Assignment, r, cacheableData } from "../models";
 import { addWhereClauseForContactsFilterMessageStatusIrrespectiveOfPastDue } from "./assignment";
 import { addCampaignsFilterToQuery } from "./campaign";
-import { log } from "../../lib";
+import log from "../log";
 import { getConfig } from "../api/lib/config";
 
 function getConversationsJoinsAndWhereClause(
@@ -159,14 +159,16 @@ export async function getConversations(
     return { query: offsetLimitQuery };
   }
 
-  offsetLimitQuery = offsetLimitQuery.orderBy("cc_id", "desc");
-
   if (cursor.limit || cursor.offset) {
+    if (!getConfig("CONVERSATIONS_RECENT")) {
+      offsetLimitQuery = offsetLimitQuery.orderBy("cc_id", "desc");
+    }
+
     offsetLimitQuery = offsetLimitQuery
       .limit(cursor.limit)
       .offset(cursor.offset);
   }
-  console.log(
+  log.info(
     "getConversations sql",
     awsContext && awsContext.awsRequestId,
     cursor,
@@ -176,7 +178,7 @@ export async function getConversations(
 
   const ccIdRows = await offsetLimitQuery;
 
-  console.log(
+  log.info(
     "getConversations contact ids",
     awsContext && awsContext.awsRequestId,
     Number(new Date()) - Number(starttime),
@@ -233,7 +235,7 @@ export async function getConversations(
 
   query = query.orderBy("cc_id", "desc").orderBy("message.id");
   const conversationRows = await query;
-  console.log(
+  log.info(
     "getConversations query2 result",
     awsContext && awsContext.awsRequestId,
     Number(new Date()) - Number(starttime),
@@ -299,10 +301,7 @@ export async function getConversations(
 
   /* Query #3 -- get the count of all conversations matching the criteria.
    * We need this to show total number of conversations to support paging */
-  console.log(
-    "getConversations query3",
-    Number(new Date()) - Number(starttime)
-  );
+  log.info("getConversations query3", Number(new Date()) - Number(starttime));
   const conversationsCountQuery = getConversationsJoinsAndWhereClause(
     r.knexReadOnly,
     organizationId,
@@ -321,7 +320,7 @@ export async function getConversations(
   } catch (err) {
     // default fake value that means 'a lot'
     conversationCount = 9999;
-    console.log("getConversations timeout", err);
+    log.info("getConversations timeout", err);
   }
 
   const pageInfo = {
@@ -457,7 +456,7 @@ export const resolvers = {
   },
   Conversation: {
     texter: queryResult => {
-      // console.log("getConversation texter");
+      // log.info("getConversation texter");
       return mapQueryFieldsToResolverFields(queryResult, {
         u_id: "id",
         u_first_name: "first_name",
@@ -466,7 +465,7 @@ export const resolvers = {
       });
     },
     contact: queryResult => {
-      // console.log("getConversation contact", queryResult);
+      // log.info("getConversation contact", queryResult);
       return mapQueryFieldsToResolverFields(queryResult, {
         cc_id: "id",
         cc_first_name: "first_name",
@@ -474,7 +473,7 @@ export const resolvers = {
       });
     },
     campaign: queryResult => {
-      // console.log("getConversation campaign");
+      // log.info("getConversation campaign");
       return mapQueryFieldsToResolverFields(queryResult, { cmp_id: "id" });
     }
   }
