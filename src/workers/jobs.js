@@ -8,7 +8,8 @@ import {
   UserOrganization
 } from "../server/models";
 import telemetry from "../server/telemetry";
-import { log, gunzip, zipToTimeZone, convertOffsetsToStrings } from "../lib";
+import { gunzip, zipToTimeZone, convertOffsetsToStrings } from "../lib";
+import log from "../server/log";
 import { sleep, updateJob } from "./lib";
 import serviceMap from "../server/api/lib/services";
 import twilio from "../server/api/lib/twilio";
@@ -28,7 +29,7 @@ import { getConfig } from "../server/api/lib/config";
 import { invokeTaskFunction, Tasks } from "./tasks";
 
 const defensivelyDeleteOldJobsForCampaignJobType = async job => {
-  console.log("job", job);
+  log.info("job", job);
   let retries = 0;
   const doDelete = async () => {
     try {
@@ -42,7 +43,7 @@ const defensivelyDeleteOldJobsForCampaignJobType = async job => {
         retries += 1;
         await doDelete();
       } else
-        console.error(`Could not delete campaign/jobType. Err: ${err.message}`);
+        log.error(`Could not delete campaign/jobType. Err: ${err.message}`);
     }
   };
 
@@ -62,7 +63,7 @@ const defensivelyDeleteJob = async job => {
         if (retries < 5) {
           retries += 1;
           await deleteJob();
-        } else console.error(`Could not delete job. Err: ${err.message}`);
+        } else log.error(`Could not delete job. Err: ${err.message}`);
       }
     };
 
@@ -110,20 +111,20 @@ export async function getTimezoneByZip(zip) {
 export async function sendJobToAWSLambda(job) {
   // job needs to be json-serializable
   // requires a 'command' key which should map to a function in job-processes.js
-  console.log(
+  log.info(
     "LAMBDA INVOCATION STARTING",
     job,
     process.env.AWS_LAMBDA_FUNCTION_NAME
   );
 
   if (!job.command) {
-    console.log("LAMBDA INVOCATION FAILED: JOB NOT INVOKABLE", job);
+    log.info("LAMBDA INVOCATION FAILED: JOB NOT INVOKABLE", job);
     return Promise.reject("Job type not available in job-processes");
   }
   const lambda = new AWS.Lambda();
   const lambdaPayload = JSON.stringify(job);
   if (lambdaPayload.length > 128000) {
-    console.log("LAMBDA INVOCATION FAILED PAYLOAD TOO LARGE");
+    log.info("LAMBDA INVOCATION FAILED PAYLOAD TOO LARGE");
     return Promise.reject("Payload too large");
   }
 
@@ -136,14 +137,14 @@ export async function sendJobToAWSLambda(job) {
       },
       (err, data) => {
         if (err) {
-          console.log("LAMBDA INVOCATION FAILED", err, job);
+          log.info("LAMBDA INVOCATION FAILED", err, job);
           reject(err);
         } else {
           resolve(data);
         }
       }
     );
-    console.log("LAMBDA INVOCATION RESULT", result);
+    log.info("LAMBDA INVOCATION RESULT", result);
   });
   return p;
 }
@@ -173,7 +174,7 @@ export async function processSqsMessages(TWILIO_SQS_QUEUE_URL) {
   const p = new Promise((resolve, reject) => {
     sqs.receiveMessage(params, async (err, data) => {
       if (err) {
-        console.log("processSqsMessages Error", err, err.stack);
+        log.info("processSqsMessages Error", err, err.stack);
         reject(err);
       } else {
         if (!data.Messages || !data.Messages.length) {
@@ -181,12 +182,12 @@ export async function processSqsMessages(TWILIO_SQS_QUEUE_URL) {
           await sleep(10000);
           resolve();
         } else {
-          console.log("processSqsMessages", data.Messages.length);
+          log.info("processSqsMessages", data.Messages.length);
           for (let i = 0; i < data.Messages.length; i++) {
             const message = data.Messages[i];
             const body = message.Body;
             if (process.env.DEBUG) {
-              console.log("processSqsMessages message body", body);
+              log.info("processSqsMessages message body", body);
             }
             const twilioMessage = JSON.parse(body);
             await serviceMap.twilio.handleIncomingMessage(twilioMessage);
@@ -198,7 +199,7 @@ export async function processSqsMessages(TWILIO_SQS_QUEUE_URL) {
               .promise()
               .catch(reject);
             if (process.env.DEBUG) {
-              console.log("processSqsMessages deleteresult", delMessageData);
+              log.info("processSqsMessages deleteresult", delMessageData);
             }
           }
           resolve();
@@ -216,7 +217,7 @@ export async function dispatchContactIngestLoad(job, organization) {
   }
   const ingestMethod = rawIngestMethod(job.job_type.replace("ingest.", ""));
   if (!ingestMethod) {
-    console.error(
+    log.error(
       "dispatchContactIngestLoad not found. invalid job type",
       job.job_type
     );
@@ -288,10 +289,10 @@ export async function completeContactLoad(
     .delete()
     .then(result => {
       deleteOptOutCells = result;
-      console.log("Deleted opt-outs: " + deleteOptOutCells);
+      log.info("Deleted opt-outs: " + deleteOptOutCells);
     })
     .catch(err => {
-      console.log("Error deleting opt-outs:", campaignId, err);
+      log.info("Error deleting opt-outs:", campaignId, err);
     });
 
   // delete duplicate cells (last wins)
@@ -309,11 +310,11 @@ export async function completeContactLoad(
     .delete()
     .then(result => {
       deleteDuplicateCells = result;
-      console.log("Deduplication result", campaignId, result);
+      log.info("Deduplication result", campaignId, result);
     })
     .catch(err => {
       deleteDuplicateCells = -1;
-      console.error("Failed deduplication", campaignId, err);
+      log.error("Failed deduplication", campaignId, err);
     });
 
   const finalContactCount = await r.getCount(
@@ -432,7 +433,7 @@ export async function assignTexters(job) {
 
   const payload = JSON.parse(job.payload);
   const cid = job.campaign_id;
-  console.log("assignTexters1", cid, payload);
+  log.info("assignTexters1", cid, payload);
   const campaign = (await r.knex("campaign").where({ id: cid }))[0];
   const texters = payload.texters;
   const currentAssignments = await r
@@ -642,7 +643,7 @@ export async function assignTexters(job) {
   }
 
   if (campaign.is_started) {
-    console.log("assignTexterscache1", job.campaign_id);
+    log.info("assignTexterscache1", job.campaign_id);
     await cacheableData.campaignContact.updateCampaignAssignmentCache(
       job.campaign_id
     );
@@ -862,13 +863,13 @@ export async function importScript(job) {
   try {
     await defensivelyDeleteOldJobsForCampaignJobType(job);
     await importScriptFromDocument(payload.campaignId, payload.url); // TODO try/catch
-    console.log(`Script import complete ${payload.campaignId} ${payload.url}`);
+    log.info(`Script import complete ${payload.campaignId} ${payload.url}`);
   } catch (exception) {
     await r
       .knex("job_request")
       .where("id", job.id)
       .update({ result_message: exception.message });
-    console.warn(exception.message);
+    log.warn(exception.message);
     return;
   }
   defensivelyDeleteJob(job);
@@ -911,7 +912,7 @@ export async function sendMessages(queryFunc, defaultStatus) {
     } catch (err) {
       // Unable to obtain lock on these rows meaning another process must be
       // sending them. We will exit gracefully in that case.
-      console.info("LOCKED ROWS", err);
+      log.info("LOCKED ROWS", err);
       trx.rollback();
       return 0;
     }
@@ -956,18 +957,18 @@ export async function sendMessages(queryFunc, defaultStatus) {
           pastMessages.push(message.id);
           pastMessages = pastMessages.slice(-100); // keep the last 100
         } catch (err) {
-          console.error("Failed sendMessage", err);
+          log.error("Failed sendMessage", err);
         }
         trySendCount += 1;
       }
       await trx.commit();
     } catch (err) {
-      console.error("Error sending messages:", err);
+      log.error("Error sending messages:", err);
       await trx.rollback();
     }
   } catch (err) {
-    console.log("sendMessages transaction errored:");
-    console.error(err);
+    log.info("sendMessages transaction errored:");
+    log.error(err);
   }
   return trySendCount;
 }
@@ -1090,8 +1091,8 @@ export async function loadMessages(csvFile) {
       header: true,
       complete: ({ data, meta, errors }, file) => {
         const fields = meta.fields;
-        console.log("FIELDS", fields);
-        console.log("FIRST LINE", data[0]);
+        log.info("FIELDS", fields);
+        log.info("FIRST LINE", data[0]);
         const promises = [];
         data.forEach(row => {
           if (!row.contact_number) {
@@ -1108,14 +1109,14 @@ export async function loadMessages(csvFile) {
           };
           promises.push(serviceMap.twilio.handleIncomingMessage(twilioMessage));
         });
-        console.log("Started all promises for CSV");
+        log.info("Started all promises for CSV");
         Promise.all(promises)
           .then(doneDid => {
-            console.log(`Processed ${doneDid.length} rows for CSV`);
+            log.info(`Processed ${doneDid.length} rows for CSV`);
             resolve(doneDid);
           })
           .catch(err => {
-            console.error("Error processing for CSV", err);
+            log.error("Error processing for CSV", err);
             reject(err);
           });
       }
@@ -1140,9 +1141,9 @@ export async function fixOrgless() {
         role: "TEXTER"
       }).error(function(error) {
         // Unexpected errors
-        console.log("error on userOrganization save in orgless", error);
+        log.info("error on userOrganization save in orgless", error);
       });
-      console.log(
+      log.info(
         "added orgless user " +
           orglessUser.id +
           " to organization " +
@@ -1222,7 +1223,7 @@ async function prepareTwilioCampaign(campaign, organization, trx) {
       allocated_to_id: campaign.id.toString()
     })
     .map(row => row.service_id);
-  console.log(`Transferring ${phoneSids.length} numbers to ${msgSrvSid}`);
+  log.info(`Transferring ${phoneSids.length} numbers to ${msgSrvSid}`);
   try {
     await twilio.addNumbersToMessagingService(
       organization,
@@ -1230,7 +1231,7 @@ async function prepareTwilioCampaign(campaign, organization, trx) {
       msgSrvSid
     );
   } catch (e) {
-    console.error("Failed to add numbers to messaging service", e);
+    log.error("Failed to add numbers to messaging service", e);
     await twilio.deleteMessagingService(organization, msgSrvSid);
     throw new Error("Failed to add numbers to messaging service");
   }
@@ -1300,7 +1301,7 @@ export async function startCampaignWithPhoneNumbers(job) {
       campaign: reloadedCampaign
     });
   } catch (e) {
-    console.error(`Job ${job.id} failed: ${e.message}`, e);
+    log.error(`Job ${job.id} failed: ${e.message}`, e);
   } finally {
     await defensivelyDeleteJob(job);
   }

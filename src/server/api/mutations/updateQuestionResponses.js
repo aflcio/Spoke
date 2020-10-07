@@ -1,4 +1,4 @@
-import { log } from "../../../lib";
+import log from "../../log";
 import { assignmentRequiredOrAdminRole } from "../errors";
 import { cacheableData } from "../../models";
 import { jobRunner } from "../../../extensions/job-runners";
@@ -161,7 +161,7 @@ export const updateQuestionResponses = async (
       questionResponsesStatus
     });
   } catch (e) {
-    console.error("Dispatching to one or more action handlers failed", e);
+    log.error("Dispatching to one or more action handlers failed", e);
   }
 
   return contact.id;

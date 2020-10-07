@@ -1,6 +1,7 @@
 import { ZipCode, r } from "../models";
 import Papa from "papaparse";
-import { log, zipToTimeZone } from "../../lib";
+import { zipToTimeZone } from "../../lib";
+import log from "../log";
 import fs from "fs";
 
 export async function seedZipCodes() {

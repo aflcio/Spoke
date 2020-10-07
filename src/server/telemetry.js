@@ -1,6 +1,6 @@
 import moment from "moment";
 import AWS from "aws-sdk";
-import { log } from "../lib";
+import log from "./log";
 import { getConfig } from "./api/lib/config";
 import _ from "lodash";
 
@@ -96,7 +96,7 @@ if (getConfig("ENABLE_CLOUDWATCH_REPORTING", null, { truthy: 1 })) {
         payload
       });
     }
-    console.log("telemetry.reportEvent", detailType, details);
+    log.info("telemetry.reportEvent", detailType, details);
   });
 
   expressMiddlewareCallbacks.push(async (err, req) => {

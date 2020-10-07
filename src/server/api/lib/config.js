@@ -1,5 +1,6 @@
 import fs from "fs";
 import { symmetricDecrypt } from "./crypto";
+import log from "../../log";
 
 // This is for centrally loading config from different environment sources
 // Especially for large config values (or many) some environments (like AWS Lambda) limit
@@ -32,7 +33,7 @@ export function getConfig(key, organization, opts) {
     let features = getFeatures(organization);
     if (features.hasOwnProperty(key)) {
       let value = features[key];
-      if (key.endsWith('_ENCRYPTED')) {
+      if (key.endsWith("_ENCRYPTED")) {
         try {
           value = symmetricDecrypt(value);
         } catch (e) {
@@ -78,15 +79,15 @@ export function hasConfig(key, organization) {
 if (CONFIG === null && process.env.CONFIG_FILE) {
   // in lambda localDir will be "/var/task" where __dirname is /var/task/build/server/server
   const localDir = process.cwd();
-  console.log("CONFIG FILE", process.env.CONFIG_FILE, process.cwd(), __dirname);
+  log.info("CONFIG FILE", process.env.CONFIG_FILE, process.cwd(), __dirname);
   if (fs.existsSync(process.env.CONFIG_FILE)) {
-    console.log("CONFIG FILE EXISTS at location");
+    log.info("CONFIG FILE EXISTS at location");
     CONFIG = JSON.parse(fs.readFileSync(process.env.CONFIG_FILE, "utf8"));
   } else if (
     process.env.NODE_ENV === "production" &&
     fs.existsSync(`${localDir}/CONFIG_FILE.json`)
   ) {
-    console.log("CONFIG FILE EXISTS locally");
+    log.info("CONFIG FILE EXISTS locally");
     CONFIG = JSON.parse(
       fs.readFileSync(`${localDir}/CONFIG_FILE.json`, "utf8")
     );

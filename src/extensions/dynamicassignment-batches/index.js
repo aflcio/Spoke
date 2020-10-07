@@ -1,4 +1,5 @@
 import { getConfig } from "../../server/api/lib/config";
+import log from "../../server/log";
 
 export const getDynamicAssignmentBatchPolicies = ({
   organization,
@@ -23,7 +24,7 @@ export const getDynamicAssignmentBatchPolicies = ({
       const c = require(`./${name}/index.js`);
       handlers.push(c);
     } catch (err) {
-      console.error(
+      log.error(
         `${handlerKey} failed to load dynamicassignment-batches handler ${name} -- ${err}`
       );
     }

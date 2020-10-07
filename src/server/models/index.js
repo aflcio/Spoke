@@ -26,6 +26,7 @@ import thinky from "./thinky";
 import datawarehouse from "./datawarehouse";
 
 import cacheableData from "./cacheable_queries";
+import log from "../log";
 
 function createLoader(model, opts) {
   const idKey = (opts && opts.idKey) || "id";
@@ -75,7 +76,7 @@ function createTablesIfNecessary() {
   // builds the database if we don't see the organization table
   return thinky.k.schema.hasTable("organization").then(tableExists => {
     if (!tableExists) {
-      console.log("CREATING DATABASE SCHEMA");
+      log.info("CREATING DATABASE SCHEMA");
       return createTables();
     }
   });
@@ -135,9 +136,7 @@ const createLoaders = () => ({
 const r = thinky.r;
 
 if (process.env.ENABLE_KNEX_TRACING === "true") {
-  r.knex.on("query", ({ sql, bindings }) =>
-    console.debug("TRACE:", sql, bindings)
-  );
+  r.knex.on("query", ({ sql, bindings }) => log.debug("TRACE:", sql, bindings));
 }
 
 export {
