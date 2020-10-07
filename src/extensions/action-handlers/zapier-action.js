@@ -1,5 +1,5 @@
 import { getConfig } from "../../server/api/lib/config";
-import { log } from "../../lib";
+import log from "../../server/log";
 
 import httpRequest from "../../server/lib/http-request.js";
 

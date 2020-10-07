@@ -8,7 +8,8 @@ import {
   UserOrganization
 } from "../server/models";
 import telemetry from "../server/telemetry";
-import { log, gunzip, zipToTimeZone, convertOffsetsToStrings } from "../lib";
+import { gunzip, zipToTimeZone, convertOffsetsToStrings } from "../lib";
+import log from "../server/log";
 import { sleep, updateJob } from "./lib";
 import serviceMap from "../server/api/lib/services";
 import twilio from "../server/api/lib/twilio";

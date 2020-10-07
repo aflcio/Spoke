@@ -12,7 +12,7 @@ import passport from "passport";
 import cookieSession from "cookie-session";
 import passportSetup from "./auth-passport";
 import wrap from "./wrap";
-import { log } from "../lib";
+import log from "./log";
 import telemetry from "./telemetry";
 import nexmo from "./api/lib/nexmo";
 import twilio from "./api/lib/twilio";

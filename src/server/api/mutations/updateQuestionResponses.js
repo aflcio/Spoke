@@ -1,4 +1,4 @@
-import { log } from "../../../lib";
+import log from "../../log";
 import { assignmentRequiredOrAdminRole } from "../errors";
 import { cacheableData } from "../../models";
 import { jobRunner } from "../../../extensions/job-runners";

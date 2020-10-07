@@ -4,7 +4,7 @@
 
 import { r, cacheableData } from "../server/models";
 import { sleep, getNextJob } from "./lib";
-import { log } from "../lib";
+import log from "../server/log";
 import {
   dispatchContactIngestLoad,
   exportCampaign,
@@ -63,7 +63,7 @@ export const invokeJobFunction = async job => {
 export async function processJobs() {
   // DEPRECATED -- switch to job dispatchers. See src/extensions/job-runners/README.md
   setupUserNotificationObservers();
-  console.log("Running processJobs");
+  log.info("Running processJobs");
   // eslint-disable-next-line no-constant-condition
   while (true) {
     try {
@@ -87,14 +87,14 @@ export async function processJobs() {
 }
 
 export async function checkMessageQueue(event, contextVars) {
-  console.log("checkMessageQueue", process.env.TWILIO_SQS_QUEUE_URL, event);
+  log.info("checkMessageQueue", process.env.TWILIO_SQS_QUEUE_URL, event);
   const twilioSqsQueue =
     (event && event.TWILIO_SQS_QUEUE_URL) || process.env.TWILIO_SQS_QUEUE_URL;
   if (!twilioSqsQueue) {
     return;
   }
 
-  console.log("checking if messages are in message queue");
+  log.info("checking if messages are in message queue");
   while (true) {
     try {
       if (event && event.delay) {
@@ -139,7 +139,7 @@ export async function loadContactsFromDataWarehouseFragmentJob(
 
 const messageSenderCreator = (subQuery, defaultStatus) => {
   return async (event, contextVars) => {
-    console.log("Running a message sender");
+    log.info("Running a message sender");
     let sentCount = 0;
     setupUserNotificationObservers();
     let delay = 1100;
@@ -229,7 +229,7 @@ export const erroredMessageSender = messageSenderCreator(function(mQuery) {
   // This is OK to run in a scheduled event because we are specifically narrowing on the error_code
   // It's important though that runs are never in parallel
   const twentyMinutesAgo = new Date(new Date() - 1000 * 60 * 20);
-  console.log("erroredMessageSender", twentyMinutesAgo);
+  log.info("erroredMessageSender", twentyMinutesAgo);
   return mQuery
     .where("message.created_at", ">", twentyMinutesAgo)
     .where("message.error_code", "<", 0);
@@ -237,7 +237,7 @@ export const erroredMessageSender = messageSenderCreator(function(mQuery) {
 
 export async function handleIncomingMessages() {
   if (process.env.DEBUG_INCOMING_MESSAGES) {
-    console.log("Running handleIncomingMessages");
+    log.info("Running handleIncomingMessages");
   }
   if (JOBS_SAME_PROCESS && process.env.DEFAULT_SERVICE === "twilio") {
     // no need to handle incoming messages
@@ -249,7 +249,7 @@ export async function handleIncomingMessages() {
   while (true) {
     try {
       if (process.env.DEBUG_SCALING) {
-        console.log("entering handleIncomingMessages. round: ", ++i);
+        log.info("entering handleIncomingMessages. round: ", ++i);
       }
       const countPendingMessagePart = await r
         .knex("pending_message_part")
@@ -260,7 +260,7 @@ export async function handleIncomingMessages() {
           return totalCount;
         });
       if (process.env.DEBUG_SCALING) {
-        console.log(
+        log.info(
           "counting handleIncomingMessages. count: ",
           countPendingMessagePart
         );
@@ -268,7 +268,7 @@ export async function handleIncomingMessages() {
       await sleep(500);
       if (countPendingMessagePart > 0) {
         if (process.env.DEBUG_SCALING) {
-          console.log("running handleIncomingMessages");
+          log.info("running handleIncomingMessages");
         }
         await handleIncomingMessageParts();
       }
@@ -302,10 +302,10 @@ export async function updateOptOuts(event, context, eventCallback) {
 }
 
 export async function runDatabaseMigrations(event, context, eventCallback) {
-  console.log("inside runDatabaseMigrations1");
-  console.log("inside runDatabaseMigrations2", event);
+  log.info("inside runDatabaseMigrations1");
+  log.info("inside runDatabaseMigrations2", event);
   await r.k.migrate.latest();
-  console.log("after latest() runDatabaseMigrations", event);
+  log.info("after latest() runDatabaseMigrations", event);
   if (eventCallback) {
     eventCallback(null, "completed migrations");
   }
@@ -313,13 +313,13 @@ export async function runDatabaseMigrations(event, context, eventCallback) {
 }
 
 export async function databaseMigrationChange(event, context, eventCallback) {
-  console.log("inside databaseMigrationChange", event);
+  log.info("inside databaseMigrationChange", event);
   if (event.up) {
     await r.k.migrate.up();
   } else {
     await r.k.migrate.down();
   }
-  console.log("after databaseMigrationChange", event);
+  log.info("after databaseMigrationChange", event);
   if (eventCallback) {
     eventCallback(null, "completed databaseMigrationChange");
   }
@@ -354,7 +354,7 @@ export async function dispatchProcesses(event, context, eventCallback) {
   await Promise.all(
     Object.keys(toDispatch).map(p => {
       const prom = toDispatch[p](event, context).catch(err => {
-        console.error("Process Error", p, err);
+        log.error("Process Error", p, err);
       });
       return prom;
     })

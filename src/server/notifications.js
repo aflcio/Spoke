@@ -1,5 +1,5 @@
 import { r, Campaign, User, Organization } from "./models";
-import { log } from "../lib";
+import log from "./log";
 import { sendEmail } from "./mail";
 
 export const Notifications = {

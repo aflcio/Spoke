@@ -2,7 +2,7 @@ import Nexmo from "nexmo";
 import { getFormattedPhoneNumber } from "../../../lib/phone-format";
 import { Message, PendingMessagePart } from "../../models";
 import { getLastMessage } from "./message-sending";
-import { log } from "../../../lib";
+import log from "../../log";
 
 // NEXMO error_codes:
 // If status is a number, then it will be the number
