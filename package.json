@@ -138,7 +138,7 @@
     "passport-local-authenticate": "^1.2.0",
     "pg": "^6.4.2",
     "pg-query-stream": "^1.1.1",
-    "pino": "^6.7.0",
+    "pino": "^5.16.0",
     "prop-types": "^15.6.0",
     "query-string": "^4.1.0",
     "react": "^15.6.1",
