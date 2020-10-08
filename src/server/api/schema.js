@@ -1066,6 +1066,7 @@ const rootMutations = {
         user_id: userId,
         organization_id: newOrganization.id
       });
+      await cacheableData.user.clearUser(userId);
       await Invite.save(
         {
           id: inviteId,
@@ -1446,7 +1447,7 @@ const rootResolvers = {
     },
     organizations: async (_, { id }, { user }) => {
       if (user.is_superadmin) {
-        return r.table("organization");
+        return r.table("organization").orderBy("id");
       } else {
         return await cacheableData.user.userOrgs(user.id, "TEXTER");
       }
