@@ -471,7 +471,7 @@ export class AssignmentTexterContactControls extends React.Component {
       button = (
         <FlatButton
           onClick={() => this.props.onEditStatus("closed", true)}
-          label="Skip"
+          label="Close Convo"
           className={css(flexStyles.flatButton)}
           style={{
             /*WTF: TODO resolve with reopen and labelStyle */
