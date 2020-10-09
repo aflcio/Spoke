@@ -315,6 +315,7 @@ export class UserEdit extends React.Component {
             />
           )}
           {authType !== "change" &&
+            window.PASSPORT_STRATEGY === "local" &&
             userId &&
             userId === currentUser.currentUser.id &&
             !fieldsNeeded && (
