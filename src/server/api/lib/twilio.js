@@ -312,8 +312,13 @@ async function sendMessage(message, contact, trx, organization, campaign) {
     );
 
     log.info(
-      "twilioMessage",
-      `[To] ${messageParams.to} [Text] ${messageParams.body}`
+      {
+        category: "twilio",
+        magType: "outgoing",
+        to: messageParams.to,
+        text: messageParams.body
+      },
+      "twilioMessage"
     );
     if (APITEST) {
       let fakeErr = null;
@@ -378,7 +383,13 @@ export function postMessageSend(
   let hasError = false;
   if (err) {
     hasError = true;
-    log.error("Error sending message", err);
+    log.error(
+      {
+        category: "twilio",
+        error: err
+      },
+      "Error sending message"
+    );
   }
   if (response) {
     changesToSave.service_id = response.sid;
@@ -418,7 +429,14 @@ export function postMessageSend(
     updateQuery = updateQuery.update(changesToSave);
 
     Promise.all([updateQuery, contactUpdateQuery]).then(() => {
-      log.info("Saved message error status", changesToSave, err);
+      log.info(
+        {
+          category: "twilio",
+          changesToSave,
+          error: err
+        },
+        "Saved message error status"
+      );
       reject(
         err ||
           (response
@@ -448,8 +466,11 @@ export function postMessageSend(
       })
       .catch(err => {
         log.error(
-          "Failed message and contact update on twilio postMessageSend",
-          err
+          {
+            category: "twilio",
+            error: err
+          },
+          "Failed message and contact update on twilio postMessageSend"
         );
         reject(err);
       });
@@ -465,10 +486,10 @@ export async function handleDeliveryReport(report) {
     // we skip writing to the database.
     // Log just in case we need to debug something. Detailed logs can be viewed here:
     // https://www.twilio.com/log/sms/logs/<SID>
-    log.info(`Message status ${messageSid}: ${messageStatus}`);
     if (messageStatus === "queued" || messageStatus === "sent") {
       return;
     }
+    log.info({ category: "twilio", messageSid, messageStatus });
 
     if (!DISABLE_DB_LOG) {
       await Log.save({
@@ -525,10 +546,12 @@ async function handleIncomingMessage(message) {
     const finalMessage = await convertMessagePartsToMessage([
       pendingMessagePart
     ]);
-    log.info(
-      "Contact reply",
-      `[From] ${finalMessage.contact_number} [Text] ${finalMessage.text}`
-    );
+    log.info({
+      category: "twilio",
+      msgType: "incoming",
+      from: finalMessage.contact_number,
+      text: finalMessage.text
+    });
     if (finalMessage) {
       if (message.spokeCreatedAt) {
         finalMessage.created_at = message.spokeCreatedAt;
