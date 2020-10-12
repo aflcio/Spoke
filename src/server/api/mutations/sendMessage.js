@@ -44,10 +44,22 @@ export const sendMessage = async (
   });
 
   if (optOut) {
-    throw newError(
+    log.warn(
       "Skipped sending because this contact was already opted out",
       "SENDERR_OPTEDOUT"
     );
+    await cacheableData.optOut.updateIsOptedOuts(query => {
+      return query.where("campaign_contact.id", campaignContactId);
+    });
+    if (contact.message_status === "needsResponse") {
+      await cacheableData.campaign.incrCount(
+        campaign.id,
+        "needsResponseCount",
+        -1
+      );
+    }
+    contact.is_opted_out = true;
+    return contact;
   }
   // const zipData = await r.table('zip_code')
   //   .get(contact.zip)
@@ -139,7 +151,7 @@ export const sendMessage = async (
   });
   if (!saveResult.message) {
     throw newError(
-      `Message send error ${saveResult.texterError || ""}`,
+      `Message send error ${saveResult.error || ""}`,
       "SENDERR_SAVEFAIL"
     );
   }

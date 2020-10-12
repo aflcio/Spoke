@@ -99,7 +99,7 @@ export class PeopleList extends Component {
         render: this.renderEditButton
       }
     ];
-    if (window.PASSPORT_STRATEGY !== "slack") {
+    if (window.PASSPORT_STRATEGY === "local") {
       columns.push({
         key: "password",
         label: "",
