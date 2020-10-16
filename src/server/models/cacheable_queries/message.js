@@ -334,6 +334,21 @@ const messageCache = {
     // eslint-disable-next-line no-param-reassign
     messageToSave.id = messageInstance.id || savedMessage.id;
 
+    log.info({
+      category: "message",
+      message: {
+        msgId: messageToSave.id,
+        campaign_contact_id: messageToSave.campaign_contact_id,
+        cell: messageToSave.contact_number,
+        campaignId,
+        orgId: organization.id,
+        org: organization.name,
+        texterId: messageToSave.user_id,
+        type: messageToSave.is_from_contact ? "received" : "sent",
+        initial: contact.message_status === "needsMessage"
+      }
+    });
+
     await saveMessageCache(messageToSave.campaign_contact_id, [messageToSave]);
     const contactData = {
       id: messageToSave.campaign_contact_id,

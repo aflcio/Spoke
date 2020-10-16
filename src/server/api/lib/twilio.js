@@ -299,7 +299,7 @@ async function sendMessage(message, contact, trx, organization, campaign) {
     log.info(
       {
         category: "twilio",
-        magType: "outgoing",
+        msgType: "outgoing",
         to: messageParams.to,
         text: messageParams.body
       },
