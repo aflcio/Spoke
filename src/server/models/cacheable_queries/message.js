@@ -345,7 +345,7 @@ const messageCache = {
         org: organization.name,
         texterId: messageToSave.user_id,
         type: messageToSave.is_from_contact ? "received" : "sent",
-        initial: contact.message_status === "needsMessage"
+        initial: contact && contact.message_status === "needsMessage"
       }
     });
 
