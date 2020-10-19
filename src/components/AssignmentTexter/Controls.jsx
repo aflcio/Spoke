@@ -978,6 +978,7 @@ export class AssignmentTexterContactControls extends React.Component {
             <MessageList
               contact={this.props.contact}
               messages={this.props.contact.messages}
+              showMedia={this.props.campaign.organization.showMedia}
               styles={messageListStyles}
             />,
             enabledSideboxes

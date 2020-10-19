@@ -65,6 +65,7 @@ export const schema = gql`
     allowSendAll: Boolean
     availableActions: [Action]
     settings: OrgSettings
+    showMedia: Boolean
     batchPolicies: [String]
     optOutMessage: String
     textingHoursEnforced: Boolean

@@ -97,6 +97,7 @@ export const campaignQuery = gql`
           textingHoursEnd
           optOutMessage
           allowSendAll
+          showMedia
         }
         customFields
         texterUIConfig {

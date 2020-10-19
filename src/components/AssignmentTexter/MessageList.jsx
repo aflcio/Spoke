@@ -34,7 +34,7 @@ const defaultStyles = {
 };
 
 const MessageList = function MessageList(props) {
-  const { contact, styles } = props;
+  const { contact, styles, showMedia } = props;
   const { optOut, messages } = contact;
 
   const received = (styles && styles.messageReceived) || defaultStyles.received;
@@ -60,58 +60,57 @@ const MessageList = function MessageList(props) {
   const renderMsg = message => (
     <div>
       <div>{message.text}</div>
-      {message.media && message.media.map(media => {
-        let type, icon, embed, subtitle;
-        if (media.type.startsWith('image')) {
-          type = 'Image';
-          icon = <ImageIcon />;
-          embed = <img src={media.url} alt="Media" />;
-        }
-        else if (media.type.startsWith('video')) {
-          type = 'Video';
-          icon = <VideoIcon />;
-          embed = (
-            <video controls>
-              <source src={media.url} type={media.type} />
-              Your browser can't play this file
-            </video>
+      {message.media &&
+        message.media.map(media => {
+          let type, icon, embed, subtitle;
+          if (media.type.startsWith("image")) {
+            type = "Image";
+            icon = <ImageIcon />;
+            embed = <img src={media.url} alt="Media" />;
+          } else if (media.type.startsWith("video")) {
+            type = "Video";
+            icon = <VideoIcon />;
+            embed = (
+              <video controls>
+                <source src={media.url} type={media.type} />
+                Your browser can't play this file
+              </video>
+            );
+          } else if (media.type.startsWith("audio")) {
+            type = "Audio";
+            icon = <AudioIcon />;
+            embed = (
+              <audio controls>
+                <source src={media.url} type={media.type} />
+                Your browser can't play this file
+              </audio>
+            );
+          } else {
+            type = "Unsupprted media";
+            icon = <AttachmentIcon />;
+            subtitle = `Type: ${media.type}`;
+          }
+
+          if (!showMedia) {
+            embed = false;
+            subtitle = "Media is disabled for this organization";
+          }
+
+          return (
+            <Card style={defaultStyles.mediaItem}>
+              <CardHeader
+                actAsExpander
+                showExpandableButton={!!embed}
+                title={`${type} attached`}
+                subtitle={subtitle || "View media at your own risk"}
+                avatar={
+                  <Avatar icon={icon} backgroundColor={theme.colors.darkGray} />
+                }
+              />
+              {embed && <CardMedia expandable>{embed}</CardMedia>}
+            </Card>
           );
-        }
-        else if (media.type.startsWith('audio')) {
-          type = 'Audio';
-          icon = <AudioIcon />;
-          embed = (
-            <audio controls>
-              <source src={media.url} type={media.type} />
-              Your browser can't play this file
-            </audio>
-          );
-        }
-        else {
-          type = 'Unsupprted media';
-          icon = <AttachmentIcon />;
-          subtitle = `Type: ${media.type}`;
-        }
-        return (
-          <Card style={defaultStyles.mediaItem}>
-            <CardHeader
-              actAsExpander
-              showExpandableButton={!!embed}
-              title={`${type} attached`}
-              subtitle={subtitle || "View media at your own risk"}
-              avatar={<Avatar
-                icon={icon}
-                backgroundColor={theme.colors.darkGray}
-              />}
-            />
-            {embed && (
-              <CardMedia expandable>
-                {embed}
-              </CardMedia>
-            )}
-          </Card>
-        )
-      })}
+        })}
     </div>
   );
 
@@ -139,7 +138,8 @@ const MessageList = function MessageList(props) {
 
 MessageList.propTypes = {
   contact: PropTypes.object,
-  styles: PropTypes.object
+  styles: PropTypes.object,
+  showMedia: PropTypes.boolean
 };
 
 export default MessageList;
