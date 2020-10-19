@@ -371,6 +371,48 @@ class Settings extends React.Component {
             </CardText>
           </Card>
         ) : null}
+
+        {this.props.data.organization && (
+          <Card>
+            <CardHeader
+              title="Media Settings"
+              style={{ backgroundColor: theme.colors.green }}
+              actAsExpander
+              showExpandableButton
+            />
+            <CardText expandable>
+              <OrganizationFeatureSettings
+                organization={this.props.data.organization}
+                fields={{
+                  SHOW_MEDIA: {
+                    schema: () => yup.boolean(),
+                    ready: true,
+                    component: props => {
+                      return (
+                        <div>
+                          <Toggle
+                            toggled={props.parent.state.SHOW_MEDIA}
+                            label="Allow texters to see attached media"
+                            onToggle={(toggler, val) =>
+                              props.parent.toggleChange("SHOW_MEDIA", val)
+                            }
+                          />
+                          <p>
+                            If enabled, texters will see a button on messages
+                            with attached media giving them the option to view
+                            it at their discretion.
+                          </p>
+                        </div>
+                      );
+                    }
+                  }
+                }}
+                saveLabel="Save Media Settings"
+              />
+            </CardText>
+          </Card>
+        )}
+
         {this.props.data.organization &&
         this.props.data.organization.settings ? (
           <Card>
@@ -407,7 +449,8 @@ class Settings extends React.Component {
                       yup
                         .string()
                         .max(64)
-                        .notRequired().nullable(),
+                        .notRequired()
+                        .nullable(),
                     ready: true,
                     component: props => {
                       return (
@@ -423,7 +466,8 @@ class Settings extends React.Component {
                     schema: () =>
                       yup
                         .string()
-                        .notRequired().nullable()
+                        .notRequired()
+                        .nullable()
                         .max(32),
                     ready: true,
                     component: props => {
@@ -438,10 +482,11 @@ class Settings extends React.Component {
                   },
                   NGP_VAN_DATABASE_MODE: {
                     schema: () =>
-                      yup.number()
+                      yup
+                        .number()
                         .oneOf([0, 1, null])
                         .nullable()
-                        .transform(val => isNaN(val) ? null : val),
+                        .transform(val => (isNaN(val) ? null : val)),
                     ready: true,
                     component: props => {
                       return (
@@ -450,14 +495,14 @@ class Settings extends React.Component {
                           label="NGP VAN Database Mode"
                           name="NGP_VAN_DATABASE_MODE"
                           choices={[
-                            {value: "", label: ""},
-                            {value: "0", label: "My Voters"},
-                            {value: "1", label: "My Campaign"},
+                            { value: "", label: "" },
+                            { value: "0", label: "My Voters" },
+                            { value: "1", label: "My Campaign" }
                           ]}
                         />
                       );
                     }
-                  },
+                  }
                 }}
                 saveLabel="Save VAN Settings"
               />

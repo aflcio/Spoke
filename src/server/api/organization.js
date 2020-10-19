@@ -20,6 +20,7 @@ export const ownerConfigurable = {
   NGP_VAN_API_KEY_ENCRYPTED: 1,
   NGP_VAN_APP_NAME: 1,
   NGP_VAN_DATABASE_MODE: 1,
+  SHOW_MEDIA: 1
   // MESSAGE_HANDLERS: 1,
   // There is already an endpoint and widget for this:
   // opt_out_message: 1
@@ -169,6 +170,8 @@ export const resolvers = {
           getConfig("ALLOW_SEND_ALL", organization, { truthy: 1 }) &&
           getFeatures(organization).ALLOW_SEND_ALL_ENABLED
       ),
+    showMedia: organization =>
+      getConfig("SHOW_MEDIA", organization, { truthy: 1 }),
     settings: async (organization, _, { user, loaders }) => {
       try {
         await accessRequired(user, organization.id, "OWNER", true);
@@ -182,8 +185,8 @@ export const resolvers = {
       const unsetFeatures = [];
       getAllowed(organization, user).forEach(f => {
         if (features.hasOwnProperty(f)) {
-          visibleFeatures[f] = f.endsWith('_ENCRYPTED')
-            ? '<Encrypted>'
+          visibleFeatures[f] = f.endsWith("_ENCRYPTED")
+            ? "<Encrypted>"
             : features[f];
         } else if (getConfig(f)) {
           visibleFeatures[f] = getConfig(f);
@@ -299,14 +302,14 @@ export const resolvers = {
       await accessRequired(user, organization.id, "SUPERVOLUNTEER");
       return (
         getConfig("ACTION_HANDLERS", organization, {
-          default: ''
-        }).includes('ngpvan-action') ||
+          default: ""
+        }).includes("ngpvan-action") ||
         getConfig("CONTACT_LOADERS", organization, {
-          default: ''
-        }).includes('ngpvan') ||
+          default: ""
+        }).includes("ngpvan") ||
         getConfig("MESSAGE_HANDLERS", organization, {
-          default: ''
-        }).includes('ngpvan')
+          default: ""
+        }).includes("ngpvan")
       );
     },
     phoneInventoryEnabled: async (organization, _, { user }) => {
