@@ -290,12 +290,14 @@ const messageCache = {
       (contact && contact.campaign_id) ||
       (activeCellFound && activeCellFound.campaign_id);
 
-    if (handlers.length && (organization || campaignId)) {
-      if (!organization) {
-        organization = await campaignCache.loadCampaignOrganization({
-          campaignId
-        });
-      }
+    if (!organization && campaignId) {
+      // eslint-disable-next-line no-param-reassign
+      organization = await campaignCache.loadCampaignOrganization({
+        campaignId
+      });
+    }
+
+    if (handlers.length && organization) {
       const availableHandlers = handlers.filter(
         h => h.available && h.preMessageSave && h.available(organization)
       );
@@ -349,8 +351,8 @@ const messageCache = {
         campaign_contact_id: messageToSave.campaign_contact_id,
         cell: messageToSave.contact_number,
         campaignId,
-        orgId: organization.id,
-        org: organization.name,
+        orgId: organization && organization.id,
+        org: organization && organization.name,
         texterId: messageToSave.user_id,
         type: messageToSave.is_from_contact ? "received" : "sent",
         initial: contact && contact.message_status === "needsMessage"
