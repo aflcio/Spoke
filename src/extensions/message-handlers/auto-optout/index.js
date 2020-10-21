@@ -52,15 +52,26 @@ export const preMessageSave = async ({ messageToSave, organization }) => {
       "base64"
     ).toString();
     const regexList = JSON.parse(config || "[]");
-    const matches = regexList.filter(matcher => {
+    const matches = regexList.reduce((acc, matcher) => {
       const re = new RegExp(matcher.regex, "i");
-      return String(messageToSave.text).match(re);
-    });
-    // log.info("auto-optout", matches, messageToSave.text, regexList);
+      const match = String(messageToSave.text).match(re);
+      if (match) {
+        acc.push({ match: match[0], reason: matcher.reason });
+      }
+      return acc;
+    }, []);
     if (matches.length) {
-      log.info("auto-optout MATCH", messageToSave.campaign_contact_id, matches);
       const reason = matches[0].reason || "auto_optout";
       messageToSave.error_code = -133;
+      log.info(
+        {
+          category: "opt-out",
+          campaignContactId: messageToSave.campaign_contact_id,
+          reason,
+          matches
+        },
+        "auto-optout MATCH"
+      );
       return {
         contactUpdates: { is_opted_out: true, error_code: -133 },
         handlerContext: { autoOptOutReason: reason },
