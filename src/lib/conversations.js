@@ -93,6 +93,9 @@ export const getConversationFiltersFromQuery = (query, organizationTags) => {
   if (query.messageStatus) {
     filters.contactsFilter.messageStatus = query.messageStatus;
   }
+  if (query.mediaOnly) {
+    filters.contactsFilter.mediaOnly = query.mediaOnly === "1";
+  }
   if (query.errorCode) {
     filters.contactsFilter.errorCode = query.errorCode.split(",");
   }

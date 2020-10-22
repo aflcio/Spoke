@@ -286,6 +286,14 @@ class IncomingMessageFilter extends Component {
             </div>
             <div className={css(styles.spacer)} />
             <div className={css(styles.toggleFlexColumn)}>
+              <Toggle
+                label={"Contains Media"}
+                onToggle={this.props.onMediaOnlyToggled}
+                toggled={this.props.includeMediaOnly}
+              />
+            </div>
+            <div className={css(styles.spacer)} />
+            <div className={css(styles.toggleFlexColumn)}>
               <SelectedCampaigns
                 campaigns={this.state.selectedCampaigns}
                 onDeleteRequested={this.handleCampaignRemoved}
@@ -422,6 +430,8 @@ IncomingMessageFilter.propTypes = {
   onOptedOutConversationsToggled: type.func.isRequired,
   includeNotOptedOutConversations: type.bool.isRequired,
   includeOptedOutConversations: type.bool.isRequired,
+  onMediaOnlyToggled: type.func.isRequired,
+  includeMediaOnly: type.bool.isRequired,
   campaigns: type.array.isRequired,
   texters: type.array.isRequired,
   onMessageFilterChanged: type.func.isRequired,

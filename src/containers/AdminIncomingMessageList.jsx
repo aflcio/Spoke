@@ -88,6 +88,9 @@ export class AdminIncomingMessageList extends Component {
       if (nextState.contactsFilter.messageStatus) {
         query.messageStatus = nextState.contactsFilter.messageStatus;
       }
+      if (nextState.contactsFilter.mediaOnly) {
+        query.mediaOnly = 1;
+      }
       if (nextState.contactsFilter.errorCode) {
         query.errorCode = nextState.contactsFilter.errorCode.join(",");
       }
@@ -328,6 +331,17 @@ export class AdminIncomingMessageList extends Component {
     });
   };
 
+  handleMediaOnlyToggled = async () => {
+    const contactsFilter = {
+      ...this.state.contactsFilter,
+      mediaOnly: !this.state.contactsFilter.mediaOnly
+    };
+    await this.setState({
+      contactsFilter,
+      needsRender: true
+    });
+  };
+
   handleActiveCampaignsToggled = async () => {
     if (
       this.state.includeActiveCampaigns &&
@@ -444,6 +458,8 @@ export class AdminIncomingMessageList extends Component {
             includeOptedOutConversations={
               this.state.includeOptedOutConversations
             }
+            onMediaOnlyToggled={this.handleMediaOnlyToggled}
+            includeMediaOnly={this.state.contactsFilter.mediaOnly || false}
             onTagsFilterChanged={this.handleTagsFilterChanged}
             tagsFilter={this.state.tagsFilter}
             tags={this.props.organization.organization.tags}
@@ -470,6 +486,7 @@ export class AdminIncomingMessageList extends Component {
             campaignsFilter={this.state.campaignsFilter}
             assignmentsFilter={this.state.assignmentsFilter}
             messageTextFilter={this.state.messageTextFilter}
+            mediaOnlyFilter={this.state.includeMediaOnly}
             utc={this.state.utc}
             onPageChanged={this.handlePageChange}
             onPageSizeChanged={this.handlePageSizeChange}

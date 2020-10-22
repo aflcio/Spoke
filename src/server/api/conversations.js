@@ -108,6 +108,16 @@ function getConversationsJoinsAndWhereClause(
         query = query.whereExists(tagsSubquery);
       }
     }
+
+    if (contactsFilter.mediaOnly) {
+      const mediaSubquery = r.knexReadOnly
+        .select(1)
+        .from("message")
+        .whereRaw("campaign_contact.id = message.campaign_contact_id")
+        .whereNotNull("media");
+
+      query = query.whereExists(mediaSubquery);
+    }
   }
 
   return query;
@@ -209,6 +219,7 @@ export async function getConversations(
     "assignment.id as ass_id",
     "message.id as mess_id",
     "message.text",
+    "message.media",
     "message.user_number",
     "message.contact_number",
     "message.created_at",
@@ -247,6 +258,7 @@ export async function getConversations(
   const messageFields = [
     "mess_id",
     "text",
+    "media",
     "user_number",
     "contact_number",
     "created_at",

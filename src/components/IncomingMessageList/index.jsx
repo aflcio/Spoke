@@ -417,6 +417,10 @@ const queries = {
               messages {
                 id
                 text
+                media {
+                  type
+                  url
+                }
                 isFromContact
                 createdAt
               }

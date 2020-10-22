@@ -34,7 +34,7 @@ const defaultStyles = {
 };
 
 const MessageList = function MessageList(props) {
-  const { contact, styles, showMedia } = props;
+  const { contact, styles, showMedia, hideDates } = props;
   const { optOut, messages } = contact;
 
   const received = (styles && styles.messageReceived) || defaultStyles.received;
@@ -123,11 +123,13 @@ const MessageList = function MessageList(props) {
           key={message.id}
           primaryText={renderMsg(message)}
           secondaryText={
-            <span
-              style={{ fontSize: "90%", display: "block", paddingTop: "5px" }}
-            >
-              {moment.utc(message.createdAt).fromNow()}
-            </span>
+            !hideDates && (
+              <span
+                style={{ fontSize: "90%", display: "block", paddingTop: "5px" }}
+              >
+                {moment.utc(message.createdAt).fromNow()}
+              </span>
+            )
           }
         />
       ))}
@@ -139,7 +141,8 @@ const MessageList = function MessageList(props) {
 MessageList.propTypes = {
   contact: PropTypes.object,
   styles: PropTypes.object,
-  showMedia: PropTypes.boolean
+  showMedia: PropTypes.bool,
+  hideDates: PropTypes.bool
 };
 
 export default MessageList;

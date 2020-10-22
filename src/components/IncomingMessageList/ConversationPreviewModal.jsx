@@ -15,6 +15,7 @@ import theme from "../../styles/theme";
 
 import loadData from "../../containers/hoc/load-data";
 import MessageResponse from "./MessageResponse";
+import MessageList from "../AssignmentTexter/MessageList";
 
 import { dataTest } from "../../lib/attributes";
 
@@ -61,7 +62,7 @@ TagList.propTypes = {
   organizationTags: PropTypes.object
 };
 
-class MessageList extends Component {
+class MessageListModal extends Component {
   componentDidMount() {
     if (typeof this.refs.messageWindow.scrollTo !== "function") {
       return;
@@ -77,36 +78,44 @@ class MessageList extends Component {
   }
 
   render() {
+    const sharedStyles = {
+      color: "white",
+      borderRadius: "5px",
+      fontWeight: "normal",
+      padding: "10px",
+      marginBottom: "10px"
+    };
+    const messageStyles = {
+      messageReceived: {
+        marginRight: "60px",
+        backgroundColor: "#AAAAAA",
+        ...sharedStyles
+      },
+      messageSent: {
+        marginLeft: "60px",
+        backgroundColor: "rgb(33, 150, 243)",
+        color: "white",
+        ...sharedStyles
+      }
+    };
     return (
       <div
         ref="messageWindow"
         style={{ maxHeight: "300px", overflowY: "scroll" }}
       >
-        {this.props.messages.map((message, index) => {
-          const isFromContact = message.isFromContact;
-          const messageStyle = {
-            marginLeft: isFromContact ? undefined : "60px",
-            marginRight: isFromContact ? "60px" : undefined,
-            backgroundColor: isFromContact ? "#AAAAAA" : "rgb(33, 150, 243)"
-          };
-
-          return (
-            <p
-              key={index}
-              className={css(styles.conversationRow)}
-              style={messageStyle}
-            >
-              {message.text}
-            </p>
-          );
-        })}
+        <MessageList
+          contact={this.props.conversation}
+          styles={messageStyles}
+          showMedia
+          hideDates
+        />
       </div>
     );
   }
 }
 
-MessageList.propTypes = {
-  messages: PropTypes.arrayOf(PropTypes.object)
+MessageListModal.propTypes = {
+  conversation: PropTypes.object
 };
 
 class ConversationPreviewBody extends Component {
@@ -114,14 +123,19 @@ class ConversationPreviewBody extends Component {
     super(props);
 
     this.state = {
-      messages: props.conversation.messages
+      conversation: props.conversation
     };
 
     this.messagesChanged = this.messagesChanged.bind(this);
   }
 
   messagesChanged(messages) {
-    this.setState({ messages });
+    this.setState({
+      conversation: {
+        ...this.state.conversation,
+        messages
+      }
+    });
   }
 
   render() {
@@ -131,7 +145,7 @@ class ConversationPreviewBody extends Component {
           organizationTags={this.props.organizationTags}
           tags={this.props.conversation.tags}
         />
-        <MessageList messages={this.state.messages} />
+        <MessageListModal conversation={this.state.conversation} />
         <MessageResponse
           conversation={this.props.conversation}
           messagesChanged={this.messagesChanged}
