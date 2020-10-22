@@ -7,6 +7,7 @@ export const schema = `
     tags: [String]
     contactId: String
     errorCode: [Int]
+    mediaOnly: Boolean
   }
 
   type Timezone {
