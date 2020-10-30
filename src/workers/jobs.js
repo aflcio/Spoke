@@ -665,6 +665,19 @@ export async function exportCampaign(job) {
   const user = await User.get(requester);
   const allQuestions = {};
   const questionCount = {};
+
+  log.info(
+    {
+      category: "event",
+      event: "export",
+      details: {
+        campaignId: id,
+        userId: user.id
+      }
+    },
+    "Export requested"
+  );
+
   const interactionSteps = await r
     .table("interaction_step")
     .getAll(id, { index: "campaign_id" });
