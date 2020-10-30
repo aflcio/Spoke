@@ -751,7 +751,10 @@ export async function exportCampaign(job) {
       ...row,
       ...customFields,
       tags: tags.reduce((acc, cur) => {
-        if (cur.campaign_contact_id == row.id) acc.push(cur.name);
+        if (cur.campaign_contact_id === row.id) {
+          acc.push(cur.name);
+        }
+        return acc;
       }, []),
       ...responses
     };
