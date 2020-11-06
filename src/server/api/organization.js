@@ -354,10 +354,8 @@ export const resolvers = {
       await accessRequired(user, organization.id, "ADMIN", true);
       const jobs = await r
         .knex("job_request")
-        .where({
-          job_type: "buy_phone_numbers",
-          organization_id: organization.id
-        })
+        .whereIn("job_type", ["buy_phone_numbers", "delete_phone_numbers"])
+        .andWhere("organization_id", organization.id)
         .orderBy("updated_at", "desc");
       return jobs.map(j => {
         const payload = JSON.parse(j.payload);
@@ -367,7 +365,7 @@ export const resolvers = {
           status: j.status,
           resultMessage: j.result_message,
           areaCode: payload.areaCode,
-          limit: payload.limit
+          limit: payload.limit || 0
         };
       });
     },
