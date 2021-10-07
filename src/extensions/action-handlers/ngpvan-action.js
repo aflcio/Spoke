@@ -1,7 +1,7 @@
 import { getConfig } from "../../server/api/lib/config";
 import log from "../../server/log";
 import Van from "../contact-loaders/ngpvan/util";
-
+import { getCountryCode, getDashedPhoneNumberDisplay } from "../../lib/phone-format";
 import httpRequest from "../../server/lib/http-request.js";
 
 export const name = "ngpvan-action";
@@ -62,6 +62,15 @@ export const postCanvassResponse = async (contact, organization, bodyInput) => {
   const body = {
     ...bodyInput
   };
+
+  if (contact.cell) {
+    const phoneCountry = process.env.PHONE_NUMBER_COUNTRY || "US";
+
+    body.canvassContext.phone = {
+      dialingPrefix: getCountryCode(contact.cell, phoneCountry).toString(),
+      phoneNumber: getDashedPhoneNumberDisplay(contact.cell, phoneCountry)
+    };
+  }
 
   if (vanPhoneId) {
     body.canvassContext.phoneId = vanPhoneId;
