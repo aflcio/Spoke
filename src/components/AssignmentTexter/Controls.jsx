@@ -615,7 +615,7 @@ export class AssignmentTexterContactControls extends React.Component {
             color="default"
             variant="contained"
           >
-            Skip
+            Close Convo
           </Button>
         );
       }
