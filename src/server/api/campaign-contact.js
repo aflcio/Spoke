@@ -6,7 +6,7 @@ import {
 } from "../models";
 import { mapFieldsToModel } from "./lib/utils";
 import { getConfig } from "./lib/config";
-import { log, getTopMostParent, zipToTimeZone } from "../../lib";
+import { getTopMostParent, zipToTimeZone } from "../../lib";
 import { coreFields } from "../../lib/scripts";
 import { accessRequired } from "./errors";
 

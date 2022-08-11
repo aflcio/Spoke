@@ -7,7 +7,7 @@ import {
 import { r } from "../../../server/models";
 import { getConfig, hasConfig } from "../../../server/api/lib/config";
 import { getFormattedPhoneNumber } from "../../../lib/phone-format.js";
-import { log, gunzip } from "../../../lib";
+import { gunzip } from "../../../lib";
 
 import path from "path";
 import Papa from "papaparse";

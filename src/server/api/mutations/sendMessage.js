@@ -9,7 +9,7 @@ import { Tasks } from "../../../workers/tasks";
 import { updateContactTags } from "./updateContactTags";
 
 import { sendEmail } from "../../mail";
-import { log } from "../../../lib";
+import log from "../../../server/log";
 
 const JOBS_SAME_PROCESS = !!(
   process.env.JOBS_SAME_PROCESS || global.JOBS_SAME_PROCESS

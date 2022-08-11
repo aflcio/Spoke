@@ -1,4 +1,3 @@
-import { log } from "../../../lib";
 import { Assignment, r, cacheableData } from "../../models";
 import { assignmentRequiredOrAdminRole } from "../errors";
 

@@ -3,7 +3,7 @@
 import { completeContactLoad } from "../../../workers/jobs";
 import { r } from "../../../server/models";
 import { getConfig, hasConfig } from "../../../server/api/lib/config";
-import { log } from "../../../lib/log";
+import log from "../../../server/log"
 import { searchGroups, getGroupMembers, getCustomFields } from "./util";
 import {
   CIVICRM_INTEGRATION_GROUPSEARCH_ENDPOINT,

@@ -1,6 +1,6 @@
 import { getConfig } from "../../server/api/lib/config";
 import { r } from "../../server/models";
-import { log } from "../../lib";
+import log from "../../server/log"
 import _ from "lodash";
 
 export const availabilityCacheKey = (name, organization, userId) =>

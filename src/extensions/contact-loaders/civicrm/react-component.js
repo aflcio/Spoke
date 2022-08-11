@@ -25,7 +25,6 @@ import {
   CIVICRM_MINQUERY_SIZE
 } from "./const";
 import CircularProgress from "@material-ui/core/CircularProgress";
-import { log } from "../../../lib/log";
 
 export default function CiviCRMLoaderField(props) {
   const [open, setOpen] = React.useState(false);
@@ -56,7 +55,7 @@ export default function CiviCRMLoaderField(props) {
           setError("");
         } catch (err) {
           setError(err.message);
-          log.error(error);
+          console.error(error);
         }
       })();
     }

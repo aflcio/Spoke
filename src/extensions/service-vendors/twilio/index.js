@@ -2,7 +2,7 @@
 import _ from "lodash";
 import Twilio, { twiml } from "twilio";
 import urlJoin from "url-join";
-import { log } from "../../../lib";
+import log  from "../../../server/log";
 import { getFormattedPhoneNumber } from "../../../lib/phone-format";
 import {
   getConfig,

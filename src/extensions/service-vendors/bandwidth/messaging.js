@@ -1,6 +1,6 @@
 import { ApiController, Client } from "@bandwidth/messaging";
 
-import { log } from "../../../lib";
+import log from "../../../server/log";
 import { getFormattedPhoneNumber } from "../../../lib/phone-format";
 import { getConfig, hasConfig } from "../../../server/api/lib/config";
 import { r, cacheableData, Log, Message } from "../../../server/models";

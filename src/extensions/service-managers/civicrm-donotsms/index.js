@@ -3,7 +3,6 @@
 // This is the civicrm-donotsms service manager.
 
 import { optoutContactToGroup } from "../../contact-loaders/civicrm/util";
-// import { log } from "../../../lib/log";
 
 export const name = "civicrm-donotsms";
 

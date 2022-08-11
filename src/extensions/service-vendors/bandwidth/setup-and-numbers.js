@@ -3,7 +3,6 @@ import { createHmac } from "crypto";
 import BandwidthNumbers from "@bandwidth/numbers";
 import BandwidthMessaging from "@bandwidth/messaging";
 
-import { log } from "../../../lib";
 import { getFormattedPhoneNumber } from "../../../lib/phone-format";
 import { sleep } from "../../../workers/lib";
 import { r } from "../../../server/models";

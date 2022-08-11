@@ -2,7 +2,7 @@ import _ from "lodash";
 import { Assignment, r, cacheableData } from "../models";
 import { addWhereClauseForContactsFilterMessageStatusIrrespectiveOfPastDue } from "./assignment";
 import { addCampaignsFilterToQuery } from "./campaign";
-import { log } from "../../lib";
+import log from "../log";
 import { getConfig } from "../api/lib/config";
 
 function getConversationsJoinsAndWhereClause(

@@ -5,7 +5,7 @@ import { getConfig } from "../lib/config";
 import { applyScript } from "../../../lib/scripts";
 import { Assignment, User, r, cacheableData } from "../../models";
 
-import { log } from "../../../lib";
+import log from "../../../server/log";
 
 import { sendMessage, findNewCampaignContact } from "./index";
 

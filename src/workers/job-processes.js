@@ -4,7 +4,7 @@
 
 import { r, cacheableData } from "../server/models";
 import { sleep, getNextJob } from "./lib";
-import { log } from "../lib";
+import log from "../server/log";
 import {
   dispatchContactIngestLoad,
   exportCampaign,

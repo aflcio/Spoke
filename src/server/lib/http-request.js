@@ -1,6 +1,6 @@
 import originalFetch from "node-fetch";
 import AbortController from "node-abort-controller";
-import { log } from "../../lib";
+import log from "../log";
 import { sleep } from "../../workers/lib";
 import { v4 as uuid } from "uuid";
 

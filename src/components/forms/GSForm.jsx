@@ -4,7 +4,6 @@ import Form from "react-formal";
 import { compose } from "recompose";
 import { StyleSheet, css } from "aphrodite";
 import { GraphQLRequestError } from "../../network/errors";
-import { log } from "../../lib";
 import withMuiTheme from "../../containers/hoc/withMuiTheme";
 
 class GSForm extends React.Component {
@@ -47,7 +46,7 @@ class GSForm extends React.Component {
     } else if (err.message) {
       this.setState({ globalErrorMessage: err.message });
     } else {
-      log.error(err);
+      console.error(err);
       this.setState({
         globalErrorMessage:
           "Oops! Your form submission did not work. Contact your administrator."

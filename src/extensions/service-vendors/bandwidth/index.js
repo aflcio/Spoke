@@ -1,6 +1,6 @@
 import AuthHasher from "passport-local-authenticate";
 import wrap from "../../../server/wrap";
-import { log } from "../../../lib";
+import log from "../../../server/log";
 import { getConfig } from "../../../server/api/lib/config";
 
 export {
