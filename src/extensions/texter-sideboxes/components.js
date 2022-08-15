@@ -1,4 +1,5 @@
 import React from "react";
+import log from "../../server/log";
 
 function getComponents() {
   const enabledComponents =
@@ -22,7 +23,10 @@ function getComponents() {
       const c = require(`./${componentName}/react-component.js`);
       components[componentName] = c;
     } catch (err) {
-      console.error("TEXTER_SIDEBOXES failed to load component", componentName);
+      log.error({
+        category: 'extension',
+        err,
+      }, `TEXTER_SIDEBOXES failed to load component ${componentName}`);
     }
   });
   return components;

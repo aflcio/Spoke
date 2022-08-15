@@ -3,6 +3,7 @@ import { getConfig, hasConfig } from "../../../server/api/lib/config";
 import { parseCSVAsync } from "../../../workers/parse_csv";
 import { failedContactLoad } from "../../../workers/jobs";
 import HttpRequest from "../../../server/lib/http-request.js";
+import log from "../../../server/log";
 import Van from "./util";
 
 export const name = "ngpvan";
@@ -40,8 +41,7 @@ export const handleFailedContactLoad = async (
   ingestDataReference,
   message
 ) => {
-  // eslint-disable-next-line no-console
-  console.error(message);
+  log.error({category: name}, message);
   await failedContactLoad(job, null, JSON.stringify(ingestDataReference), {
     errors: [message],
     ...ingestDataReference
@@ -64,9 +64,9 @@ export async function available(organization, user) {
     hasConfig("NGP_VAN_WEBHOOK_BASE_URL", organization);
 
   if (!result) {
-    console.log(
-      "ngpvan contact loader unavailable. Missing one or more required environment variables."
-    );
+    log.warn({
+      category: 'extension'
+    }, "ngpvan contact loader unavailable. Missing one or more required environment variables.");
   }
 
   return {
@@ -84,12 +84,12 @@ export function addServerEndpoints(expressApp) {
     "/integration/ngpvan/ingest/:jobId/:maxContacts/:vanListId",
     function(req, res) {
       const { jobId, maxContacts, vanListId } = req.params;
-      console.log(
-        "Received callback from VAN with parameters: jobId, maxContacts, vanListId",
+      log.info({
+        category: name,
         jobId,
         maxContacts,
         vanListId
-      );
+      }, "Received callback from VAN with parameters: jobId, maxContacts, vanListId");
       res.send("OK");
     }
   );
@@ -145,10 +145,12 @@ export async function getClientChoiceData(organization, campaign, user) {
       }
     }
   } catch (error) {
-    const message = `Error retrieving saved list metadata from VAN ${error}`;
-    // eslint-disable-next-line no-console
-    console.log(message);
-    return { data: `${JSON.stringify({ error: message })}` };
+      const message = `Error retrieving saved list metadata from VAN ${error}`;
+      log.error({
+        category: name,
+        err: error
+      }, "Error retrieving saved list metadata from VAN");
+      return { data: `${JSON.stringify({ error: message })}` };
   }
 
   // / data to be sent to the admin client to present options to the component or similar

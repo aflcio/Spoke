@@ -227,7 +227,6 @@ const getAndClearNotifications = async userId => {
       .hkeys(key)
       .del(key)
       .execAsync();
-    // console.log('getAndClearNotifications', notifData);
     if (notifData && notifData[0] && notifData[0].length) {
       notifications = notifData[0];
     }

@@ -98,7 +98,7 @@ export const sendRawMessage = async ({
   });
 
   if (!saveResult.message) {
-    console.log("SENDERR_SAVEFAIL", saveResult);
+    log.error({ category: 'sendMessage', saveResult}, "SENDERR_SAVEFAIL");
     throw newError(
       `Message send error ${saveResult.texterError ||
         saveResult.matchError ||
@@ -135,7 +135,7 @@ export const sendMessage = async (
     contact.assignment_id !== parseInt(message.assignmentId) ||
     campaign.is_archived
   ) {
-    console.error("Error: assignment changed");
+    log.error({category: 'sendMessage'}, 'assignment changed');
     throw newError("Your assignment has changed", "SENDERR_ASSIGNMENTCHANGED", {
       message,
       campaignContactId,

@@ -4,6 +4,7 @@ import { r, cacheableData } from "../../models";
 import { hasRole } from "../../../lib";
 import { getConfig } from "../lib/config";
 import telemetry from "../../telemetry";
+import log from "../../log";
 
 const INVALID_JOIN = () => {
   const error = new GraphQLError("Invalid join request");
@@ -89,7 +90,7 @@ export const joinOrganization = async (
       });
     } catch (error) {
       // Unexpected errors
-      console.log("error on userOrganization save", error);
+      log.error(error, "error on userOrganization save");
       throw new GraphQLError("Error on saving user-organization connection");
     }
     await cacheableData.user.clearUser(user.id);

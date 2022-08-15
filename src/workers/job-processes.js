@@ -73,7 +73,7 @@ export async function processJobs() {
     return;
   }
   setupUserNotificationObservers();
-  console.log("Running processJobs");
+  log.info("Running processJobs");
   // eslint-disable-next-line no-constant-condition
   while (true) {
     try {
@@ -90,21 +90,30 @@ export async function processJobs() {
       const twoMinutesAgo = new Date(new Date() - 1000 * 60 * 2);
       // clear out stuck jobs
       await clearOldJobs({ oldJobPast: twoMinutesAgo });
-    } catch (ex) {
-      log.error(ex);
+    } catch (err) {
+      log.error({
+        category: 'job-processes',
+        event: 'processJobs',
+        err
+      });
     }
   }
 }
 
 export async function checkMessageQueue(event, contextVars) {
-  console.log("checkMessageQueue", process.env.TWILIO_SQS_QUEUE_URL, event);
+  log.info({
+    category: 'job-processes',
+    event: 'checkMessageQueue',
+    sqs_queue: process.env.TWILIO_SQS_QUEUE_URL,
+    eventData: event
+  });
   const twilioSqsQueue =
     (event && event.TWILIO_SQS_QUEUE_URL) || process.env.TWILIO_SQS_QUEUE_URL;
   if (!twilioSqsQueue) {
     return;
   }
 
-  console.log("checking if messages are in message queue");
+  log.info("checking if messages are in message queue");
   while (true) {
     try {
       if (event && event.delay) {
@@ -120,8 +129,12 @@ export async function checkMessageQueue(event, contextVars) {
           return;
         }
       }
-    } catch (ex) {
-      log.error(ex);
+    } catch (err) {
+      log.error({
+        category: 'job-processes',
+        event: 'checkMessageQueue',
+        err
+      });
     }
   }
 }
@@ -167,7 +180,7 @@ export async function loadContactS3PullProcessFileJob(
 
 const messageSenderCreator = (subQuery, defaultStatus) => {
   return async (event, contextVars) => {
-    console.log("Running a message sender");
+    log.info("Running a message sender");
     let sentCount = 0;
     setupUserNotificationObservers();
     let delay = 1100;
@@ -257,7 +270,11 @@ export const erroredMessageSender = messageSenderCreator(function(mQuery) {
   // This is OK to run in a scheduled event because we are specifically narrowing on the error_code
   // It's important though that runs are never in parallel
   const twentyMinutesAgo = new Date(new Date() - 1000 * 60 * 20);
-  console.log("erroredMessageSender", twentyMinutesAgo);
+  log.info({
+    category: 'job-processes',
+    event: 'erroredMessageSender',
+    twentyMinutesAgo
+  });
   return mQuery
     .where("message.created_at", ">", twentyMinutesAgo)
     .where("message.error_code", "<", 0);
@@ -265,7 +282,7 @@ export const erroredMessageSender = messageSenderCreator(function(mQuery) {
 
 export async function handleIncomingMessages() {
   if (process.env.DEBUG_INCOMING_MESSAGES) {
-    console.log("Running handleIncomingMessages");
+    log.info("Running handleIncomingMessages");
   }
   if (JOBS_SAME_PROCESS && process.env.DEFAULT_SERVICE === "twilio") {
     // no need to handle incoming messages
@@ -277,7 +294,7 @@ export async function handleIncomingMessages() {
   while (true) {
     try {
       if (process.env.DEBUG_SCALING) {
-        console.log("entering handleIncomingMessages. round: ", ++i);
+        log.debug(`entering handleIncomingMessages. round: ${++i}`);
       }
       const countPendingMessagePart = await r
         .knex("pending_message_part")
@@ -288,20 +305,17 @@ export async function handleIncomingMessages() {
           return totalCount;
         });
       if (process.env.DEBUG_SCALING) {
-        console.log(
-          "counting handleIncomingMessages. count: ",
-          countPendingMessagePart
-        );
+        log.debug({countPendingMessagePart}, "counting handleIncomingMessages.");
       }
       await sleep(500);
       if (countPendingMessagePart > 0) {
         if (process.env.DEBUG_SCALING) {
-          console.log("running handleIncomingMessages");
+          log.debug("running handleIncomingMessages");
         }
         await handleIncomingMessageParts();
       }
     } catch (ex) {
-      log.error("error at handleIncomingMessages", ex);
+      log.error(ex, "error at handleIncomingMessages");
     }
   }
 }
@@ -328,15 +342,16 @@ export async function updateOptOuts(event, context, eventCallback) {
       )
   );
   if (res) {
-    console.log("updateOptOuts contacts updated", res);
+    log.info({
+      category: 'job-processes',
+      event: 'updateOptOuts',
+      res
+    }, "contacts updated");
   }
 }
 
 export async function runDatabaseMigrations(event, context, eventCallback) {
-  console.log("inside runDatabaseMigrations1");
-  console.log("inside runDatabaseMigrations2", event);
   await r.k.migrate.latest();
-  console.log("after latest() runDatabaseMigrations", event);
   if (eventCallback) {
     eventCallback(null, "completed migrations");
   }
@@ -344,13 +359,11 @@ export async function runDatabaseMigrations(event, context, eventCallback) {
 }
 
 export async function databaseMigrationChange(event, context, eventCallback) {
-  console.log("inside databaseMigrationChange", event);
   if (event.up) {
     await r.k.migrate.up();
   } else {
     await r.k.migrate.down();
   }
-  console.log("after databaseMigrationChange", event);
   if (eventCallback) {
     eventCallback(null, "completed databaseMigrationChange");
   }
@@ -394,9 +407,14 @@ export async function dispatchProcesses(event, context, eventCallback) {
       }
 
       const prom = toDispatch[p](event, context).catch(err => {
-        console.error("dispatchProcesses Process Error", p, err);
+        log.error({
+          category: 'job-processes',
+          event: 'dispatchProcesses',
+          p,
+          err
+        }, "Process Error");
       });
-      console.log("dispatchProcesses", p);
+      log.info({category: 'job-processes', event: 'dispatchProcesses', p});
       return prom;
     })
   );

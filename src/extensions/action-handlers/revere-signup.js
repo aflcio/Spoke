@@ -2,6 +2,7 @@ import request from "request";
 import aws from "aws-sdk";
 import { r } from "../../server/models";
 import { actionKitSignup } from "./helper-ak-sync.js";
+import log from "../../server/log";
 
 const sqs = new aws.SQS();
 
@@ -81,9 +82,15 @@ export async function processAction({ campaignContactId }) {
 
     sqs.sendMessage(sqsParams, (err, data) => {
       if (err) {
-        console.log("Error sending message to queue", err);
+        log.error({
+          category: 'revere',
+          err
+        }, "Error sending message to queue");
       }
-      console.log("Sent message to queue with data:", data);
+      log.info({
+        category: 'revere',
+        data
+      }, "Sent message to queue with data:");
     });
   } else {
     const options = {

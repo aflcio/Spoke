@@ -5,6 +5,7 @@ import {
   getDashedPhoneNumberDisplay
 } from "../../lib/phone-format";
 import httpRequest from "../../server/lib/http-request.js";
+import log from "../../server/log";
 
 export const name = "ngpvan-action";
 
@@ -48,18 +49,21 @@ export const postCanvassResponse = async (contact, organization, bodyInput) => {
     vanId = customFields.VanID || customFields.vanid;
     vanPhoneId = customFields.VanPhoneId || customFields.vanPhoneId;
   } catch (caughtException) {
-    // eslint-disable-next-line no-console
-    console.error(
-      `Error parsing custom_fields for contact ${contact.id} ${caughtException}`
-    );
+    log.error({
+      category: name,
+      event: 'postCanvassResponse',
+      contactId: contact.id,
+      err: caughtException
+    }, 'Error parsing custom_fields for contact');
     return {};
   }
 
   if (!vanId) {
-    // eslint-disable-next-line no-console
-    console.error(
-      `Cannot sync results to van for campaign_contact ${contact.id}. No VanID in custom fields`
-    );
+    log.error({
+      category: name,
+      event: 'postCanvassResponse',
+      contactId: contact.id,
+    }, 'Cannot sync results to van for campaign_contact. No VanID in custom fields');
     return {};
   }
 
@@ -82,11 +86,12 @@ export const postCanvassResponse = async (contact, organization, bodyInput) => {
 
   const url = Van.makeUrl(`v4/people/${vanId}/canvassResponses`, organization);
 
-  // eslint-disable-next-line no-console
-  console.info("Sending contact update to VAN", {
+  log.info({
+    category: name,
+    event: 'postCanvassResponse',
     vanId,
-    body: JSON.stringify(body)
-  });
+    body
+  }, 'Sending contact update to VAN');
 
   return httpRequest(url, {
     method: "POST",
@@ -113,10 +118,9 @@ export async function processAction({ actionObject, contact, organization }) {
     const body = JSON.parse(answerActionsData.value);
 
     return postCanvassResponse(contact, organization, body);
-  } catch (caughtError) {
-    // eslint-disable-next-line no-console
-    console.error("Encountered exception in ngpvan.processAction", caughtError);
-    throw caughtError;
+  } catch (err) {
+    log.error({category: name, event: 'processAction', err});
+    throw err;
   }
 }
 
@@ -132,10 +136,13 @@ async function getContactTypeIdAndInputTypeId(organization) {
     }
   )
     .then(async response => await response.json())
-    .catch(error => {
-      const message = `Error retrieving contact types from VAN ${error}`;
-      // eslint-disable-next-line no-console
-      console.error(message);
+    .catch(err => {
+      log.error({
+        category: name,
+        event: 'getContactTypeIdAndInputTypeId',
+        err
+      }, 'Error retrieving contact types from VAN');
+      const message = `Error retrieving contact types from VAN ${err}`;
       throw new Error(message);
     });
 
@@ -150,10 +157,13 @@ async function getContactTypeIdAndInputTypeId(organization) {
     }
   )
     .then(async response => await response.json())
-    .catch(error => {
-      const message = `Error retrieving input types from VAN ${error}`;
-      // eslint-disable-next-line no-console
-      console.error(message);
+    .catch(err => {
+      log.error({
+        category: name,
+        event: 'getContactTypeIdAndInputTypeId',
+        err
+      }, 'Error retrieving input types from VAN');
+      const message = `Error retrieving input types from VAN ${err}`;
       throw new Error(message);
     });
 
@@ -173,8 +183,11 @@ async function getContactTypeIdAndInputTypeId(organization) {
       ct => ct.name === contactType
     ));
     if (!contactTypeId) {
-      // eslint-disable-next-line no-console
-      console.error(`Contact type ${contactType} not returned by VAN`);
+      log.error({
+        category: name,
+        event: 'getContactTypeIdAndInputTypeId',
+        contactType
+      }, 'Contact type not returned by VAN');
     }
 
     const inputTypeName = getConfig("NGP_VAN_INPUT_TYPE", organization);
@@ -183,8 +196,11 @@ async function getContactTypeIdAndInputTypeId(organization) {
         inputTypesResponse.find(inTy => inTy.name === inputTypeName) || {};
       inputTypeId = inputType.inputTypeId || -1;
       if (inputTypeId === -1) {
-        // eslint-disable-next-line no-console
-        console.error(`Input type ${inputType} not returned by VAN`);
+        log.error({
+          category: name,
+          event: 'getContactTypeIdAndInputTypeId',
+          inputType
+        }, 'Input type not returned by VAN');
       }
     }
 
@@ -193,11 +209,12 @@ async function getContactTypeIdAndInputTypeId(organization) {
         "VAN did not return the configured input type or contact type. Check the log"
       );
     }
-  } catch (error) {
-    // eslint-disable-next-line no-console
-    console.error(
-      `Error loading canvass/contactTypes or canvass/inputTypes from VAN  ${error}`
-    );
+  } catch (err) {
+    log.error({
+      category: name,
+      event: 'getContactTypeIdAndInputTypeId',
+      err
+    }, 'Error loading canvass/contactTypes or canvass/inputTypes from VAN');
   }
 
   return { contactTypeId, inputTypeId };
@@ -233,10 +250,13 @@ export async function getClientChoiceData(organization) {
     }
   )
     .then(async response => await response.json())
-    .catch(error => {
-      const message = `Error retrieving survey questions from VAN ${error}`;
-      // eslint-disable-next-line no-console
-      console.error(message);
+    .catch(err => {
+      log.error({
+        category: name,
+        event: 'getClientChoiceData',
+        err
+      }, 'Error retrieving survey questions from VAN');
+      const message = `Error retrieving survey questions from VAN ${err}`;
       throw new Error(message);
     });
 
@@ -251,10 +271,13 @@ export async function getClientChoiceData(organization) {
     }
   )
     .then(async response => await response.json())
-    .catch(error => {
-      const message = `Error retrieving activist codes from VAN ${error}`;
-      // eslint-disable-next-line no-console
-      console.error(message);
+    .catch(err => {
+      log.error({
+        category: name,
+        event: 'getClientChoiceData',
+        err
+      }, 'Error retrieving activist codes from VAN');
+      const message = `Error retrieving activist codes from VAN ${err}`;
       throw new Error(message);
     });
 
@@ -269,10 +292,13 @@ export async function getClientChoiceData(organization) {
     }
   )
     .then(async response => await response.json())
-    .catch(error => {
-      const message = `Error retrieving canvass result codes from VAN ${error}`;
-      // eslint-disable-next-line no-console
-      console.error(message);
+    .catch(err => {
+      log.error({
+        category: name,
+        event: 'getClientChoiceData',
+        err
+      }, 'Error retrieving canvass result codes from VAN');
+      const message = `Error retrieving canvass result codes from VAN ${err}`;
       throw new Error(message);
     });
 
@@ -290,11 +316,12 @@ export async function getClientChoiceData(organization) {
       activistCodesPromise,
       canvassResultCodesPromise
     ]);
-  } catch (caughtError) {
-    // eslint-disable-next-line no-console
-    console.error(
-      `Error loading surveyQuestions, activistCodes or canvass/resultCodes from VAN  ${caughtError}`
-    );
+  } catch (err) {
+    log.error({
+      category: name,
+      event: 'getClientChoiceData',
+      err
+    }, 'Error loading surveyQuestions, activistCodes or canvass/resultCodes from VAN');
     return {
       data: `${JSON.stringify({
         error:
@@ -376,8 +403,7 @@ export async function available(organization) {
     hasConfig("NGP_VAN_APP_NAME", organization);
 
   if (!result) {
-    // eslint-disable-next-line no-console
-    console.info(
+    log.info(
       "ngpvan-action unavailable. Missing one or more required environment variables"
     );
   }
@@ -387,15 +413,13 @@ export async function available(organization) {
       const { data } = await exports.getClientChoiceData(organization);
       const parsedData = (data && JSON.parse(data)) || {};
       if (parsedData.error) {
-        // eslint-disable-next-line no-console
-        console.info(
+        log.info(
           `ngpvan-action unavailable. getClientChoiceData returned error ${parsedData.error}`
         );
         result = false;
       }
     } catch (caughtError) {
-      // eslint-disable-next-line no-console
-      console.info(
+      log.info(
         `ngpvan-action unavailable. getClientChoiceData threw an exception ${caughtError}`
       );
       result = false;

@@ -10,6 +10,7 @@ import {
   CampaignContact,
   Campaign
 } from "../../../server/models";
+import log from "../../../server/log";
 import { getConfig, hasConfig } from "../../../server/api/lib/config";
 import { getFormattedPhoneNumber } from "../../../lib/phone-format.js";
 
@@ -86,7 +87,10 @@ export async function getClientChoiceData(organization, campaign, user) {
       messages.push("no connection");
     }
   } catch (err) {
-    console.error("warehouse connection error", err);
+    log.error({
+      category: name,
+      err
+    }, "warehouse connection error");
     isConnected = false;
     messages.push(err);
   }
@@ -125,27 +129,32 @@ export async function processContactLoad(job, maxContacts, organization) {
 
   await loadContactsFromDataWarehouse(job, maxContacts)
     .then(res => {
-      console.log("datawarehouse: finished running", job.id, job.campaign_id);
+      log.info({
+        category: name,
+        event: 'processContactLoad',
+        jobId: job.id,
+        campaignId: job.campaign_id,
+        org: organization.id
+      }, "datawarehouse: finished running");
     })
     .catch(err => {
-      console.error(
-        "datawarehouse: failed running",
-        job.id,
-        job.campaign_id,
+      log.error({
+        category: name,
+        event: 'processContactLoad',
+        jobId: job.id,
+        campaignId: job.campaign_id,
+        org: organization.id,
         err
-      );
+      }, "datawarehouse: failed running");
     });
 }
 
 export async function loadContactsFromDataWarehouseFragment(job, jobEvent) {
   /// run to load a portion of the total
-  console.log(
-    "starting loadContactsFromDataWarehouseFragment",
-    jobEvent.campaignId,
-    jobEvent.limit,
-    jobEvent.offset,
+  log.info({
+    category: name,
     jobEvent
-  );
+  }, "starting loadContactsFromDataWarehouseFragment");
   const jobMessages = [];
   const insertOptions = {
     batchSize: 1000
@@ -156,12 +165,11 @@ export async function loadContactsFromDataWarehouseFragment(job, jobEvent) {
     .select("status")
     .first();
   if (!jobCompleted) {
-    console.log(
-      "loadContactsFromDataWarehouseFragment job no longer exists",
-      jobEvent.campaignId,
+    log.info({
+      category: name,
       jobCompleted,
       jobEvent
-    );
+    }, "loadContactsFromDataWarehouseFragment job no longer exists");
     return { alreadyComplete: 1 };
   }
 
@@ -175,14 +183,17 @@ export async function loadContactsFromDataWarehouseFragment(job, jobEvent) {
   let knexResult;
   try {
     warehouseConnection = warehouseConnection || datawarehouse();
-    console.log(
-      "loadContactsFromDataWarehouseFragment RUNNING WAREHOUSE query",
+    log.info({
+      category: name,
       sqlQuery
-    );
+    }, "loadContactsFromDataWarehouseFragment RUNNING WAREHOUSE query");
     knexResult = await warehouseConnection.raw(sqlQuery);
   } catch (err) {
     // query failed
-    console.error("Data warehouse query failed: ", err);
+    log.error({
+      category: name,
+      err
+    }, "Data warehouse query failed")
     jobMessages.push(`Data warehouse count query failed with ${err}`);
     await failedContactLoad(
       job,
@@ -210,11 +221,11 @@ export async function loadContactsFromDataWarehouseFragment(job, jobEvent) {
     }
   });
   if (!("first_name" in fields && "last_name" in fields && "cell" in fields)) {
-    console.error(
-      "SQL statement does not return first_name, last_name, and cell: ",
+    log.warn({
+      category: name,
       sqlQuery,
-      fields
-    );
+      fields,
+    }, "SQL statement does not return first_name, last_name, and cell");
     jobMessages.push(
       `SQL statement does not return first_name, last_name and cell => ${sqlQuery} => with fields ${fields}`
     );
@@ -274,18 +285,18 @@ export async function loadContactsFromDataWarehouseFragment(job, jobEvent) {
     .where("id", jobEvent.jobId)
     .select("status")
     .first();
-  console.log(
-    "loadContactsFromDataWarehouseFragment toward end",
+  log.info({
+    category: name,
     completed,
     jobEvent
-  );
+  }, "loadContactsFromDataWarehouseFragment toward end");
 
   if (!completed) {
-    console.log(
-      "loadContactsFromDataWarehouseFragment job has been deleted",
+    log.info({
+      category: name,
       completed,
-      jobEvent.campaignId
-    );
+      campaignId: jobEvent.campaignId
+    }, "loadContactsFromDataWarehouseFragment job has been deleted");
   } else if (jobEvent.totalParts && completed.status >= jobEvent.totalParts) {
     if (jobEvent.organizationId) {
       // now that we've saved them all, we delete everyone that is opted out locally
@@ -298,7 +309,7 @@ export async function loadContactsFromDataWarehouseFragment(job, jobEvent) {
         .andWhere("campaign_id", jobEvent.campaignId)
         .delete()
         .then(result => {
-          console.log(
+          log.info({category: name},
             `loadContactsFromDataWarehouseFragment # of contacts with invalid cells removed from DW query (${jobEvent.campaignId}): ${result}`
           );
           validationStats.invalidCellCount = result;
@@ -323,10 +334,10 @@ export async function loadContactsFromDataWarehouseFragment(job, jobEvent) {
       command: "loadContactsFromDataWarehouseFragmentJob"
     };
     if (process.env.WAREHOUSE_DB_LAMBDA_ITERATION) {
-      console.log(
-        "SENDING TO LAMBDA loadContactsFromDataWarehouseFragment",
+      log.info({
+        category: name,
         newJob
-      );
+      }, "SENDING TO LAMBDA loadContactsFromDataWarehouseFragment");
       await sendJobToAWSLambda(newJob);
       return { invokedAgain: 1 };
     } else {
@@ -336,7 +347,11 @@ export async function loadContactsFromDataWarehouseFragment(job, jobEvent) {
 }
 
 export async function loadContactsFromDataWarehouse(job) {
-  console.log("STARTING loadContactsFromDataWarehouse", job.id, job.payload);
+  log.info({
+    category: name,
+    jobId: job.id,
+    payload: job.payload
+  }, "STARTING loadContactsFromDataWarehouse");
   const jobMessages = [];
   const sqlQuery = JSON.parse(job.payload).contactSql;
 
@@ -344,11 +359,17 @@ export async function loadContactsFromDataWarehouse(job) {
     jobMessages.push(
       "Malformed SQL statement.  Must begin with SELECT and not have any semicolons"
     );
-    console.error(jobMessages.slice(-1)[0], sqlQuery);
+    log.error({
+      category: name,
+      sqlQuery
+    }, jobMessages.slice(-1)[0]);
   }
   if (!datawarehouse) {
     jobMessages.push("No data warehouse connection, so cannot load contacts");
-    console.error(jobMessages.slice(-1)[0], job);
+    log.error({
+      category: name,
+      job
+    }, jobMessages.slice(-1)[0]);
   }
 
   if (jobMessages.length) {
@@ -371,7 +392,10 @@ export async function loadContactsFromDataWarehouse(job) {
       `SELECT COUNT(*) FROM ( ${sqlQuery} ) AS QUERYCOUNT`
     );
   } catch (err) {
-    console.error("Data warehouse count query failed: ", err);
+    log.error({
+      category: name,
+      err
+    }, "Data warehouse count query failed");
     jobMessages.push(`Data warehouse count query failed with ${err}`);
     await failedContactLoad(
       job,

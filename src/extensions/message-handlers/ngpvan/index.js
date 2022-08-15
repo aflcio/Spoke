@@ -2,6 +2,7 @@ import { getConfig, hasConfig } from "../../../server/api/lib/config";
 const Van = require("../../../extensions/action-handlers/ngpvan-action");
 
 import { getActionChoiceData } from "../../../extensions/action-handlers";
+import log from "../../../server/log";
 
 export const DEFAULT_NGP_VAN_INITIAL_TEXT_CANVASS_RESULT = "Texted";
 
@@ -47,10 +48,11 @@ export const postMessageSave = async ({ message, contact, organization }) => {
 
   const texted = clientChoiceData.find(ccd => ccd.name === initialTextResult);
   if (!texted) {
-    // eslint-disable-next-line no-console
-    console.error(
-      `NGPVAN message handler -- not handling message because no action choice data found for ${initialTextResult}`
-    );
+    log.error({
+      category: 'ngpvan',
+      event: 'postMessageSave',
+      initialTextResult
+    }, 'Not handling message because no action choice data found');
 
     return {};
   }
@@ -59,12 +61,8 @@ export const postMessageSave = async ({ message, contact, organization }) => {
 
   return Van.postCanvassResponse(contact, organization, body)
     .then(() => ({}))
-    .catch(caughtError => {
-      // eslint-disable-next-line no-console
-      console.error(
-        "Encountered exception in ngpvan.postMessageSave",
-        caughtError
-      );
+    .catch(err => {
+      log.error({category: 'ngpvan', event: 'postMessageSave', err});
       return {};
     });
 };

@@ -1,6 +1,8 @@
 /// All functions are OPTIONAL EXCEPT metadata() and const name=.
 /// DO NOT IMPLEMENT ANYTHING YOU WILL NOT USE -- the existence of a function adds behavior/UI (sometimes costly)
 
+import log from "../../../server/log";
+
 export const name = "test-fake-example";
 
 export const metadata = () => ({
@@ -98,13 +100,14 @@ export async function onCampaignContactLoad({
   finalContactCount,
   deleteOptOutCells
 }) {
-  console.log(
-    "service-managers.test-fake-example.OnCampaignContactLoad 11",
-    organization.id,
-    campaign.id,
+  log.info({
+    category: name,
+    event: 'OnCampaignContactLoad',
+    org: organization.id,
+    campaignId: campaign.id,
     ingestResult,
     ingestDataReference
-  );
+  });
 }
 
 export async function getOrganizationData({ organization, user, loaders }) {
@@ -150,11 +153,12 @@ export async function onOrganizationUpdateSignal({
 }
 
 export async function onCampaignStart({ organization, campaign, user }) {
-  console.log(
-    "service-managers.test-fake-example onCampaignStart",
-    campaign.id,
-    user.id
-  );
+  log.info({
+    category: name,
+    event: 'onCampaignStart',
+    campaignId: campaign.id,
+    userId: user.id
+  });
 }
 
 export async function onCampaignArchive({}) {}

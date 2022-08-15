@@ -1,4 +1,4 @@
-/* eslint-disable no-use-before-define, no-console */
+/* eslint-disable no-use-before-define */
 import _ from "lodash";
 import Twilio, { twiml } from "twilio";
 import urlJoin from "url-join";
@@ -270,10 +270,11 @@ export async function sendMessage({
   );
   const APITEST = /twilioapitest/.test(message.text);
   if (!twilio && !APITEST) {
-    log.warn(
-      "cannot actually send SMS message -- twilio is not fully configured:",
-      message.id
-    );
+    log.warn({
+      category: 'twilio',
+      event: 'sendMessage',
+      msgId: message.id,
+    }, "cannot actually send SMS message -- twilio is not fully configured");
     if (message.id) {
       let updateQuery = r
         .knex("message")
@@ -298,7 +299,11 @@ export async function sendMessage({
 
   return new Promise((resolve, reject) => {
     if (message.service !== "twilio") {
-      log.warn("Message not marked as a twilio message", message.id);
+      log.warn({
+        category: 'twilio',
+        event: 'sendMessage',
+        msgId: message.id,
+      }, "Message not marked as a twilio message");
     }
 
     let twilioValidityPeriod = process.env.TWILIO_MESSAGE_VALIDITY_PERIOD;
@@ -366,7 +371,13 @@ export async function sendMessage({
       additionalMessageParams
     );
 
-    console.log("twilioMessage", messageParams);
+    log.info({
+      category: 'twilio',
+      event: 'sendMessage',
+      msgType: 'outgoing',
+      to: messageParams.to,
+      text: messageParams.body
+    }, 'twilioMessage');
     if (APITEST) {
       let fakeErr = null;
       let fakeResponse = null;
@@ -426,12 +437,14 @@ export function postMessageSend(
         ...changes
       }
     : {};
-  log.info("postMessageSend", message, changes, response, err);
   let hasError = false;
   if (err) {
     hasError = true;
-    log.error("Error sending message", err);
-    console.log("Error sending message", err);
+    log.error({
+      category: 'twilio',
+      event: 'postMessageSend',
+      err
+    }, "Error sending message");
   }
   if (response) {
     changesToSave.service_id = response.sid;
@@ -471,7 +484,12 @@ export function postMessageSend(
     updateQuery = updateQuery.update(changesToSave);
 
     Promise.all([updateQuery, contactUpdateQuery]).then(() => {
-      console.log("Saved message error status", changesToSave, err);
+      log.info({
+        category: 'twilio',
+        event: 'postMessageSend',
+        changesToSave,
+        err
+      }, "Saved message error status");
       reject(
         err ||
           (response
@@ -501,10 +519,11 @@ export function postMessageSend(
         });
       })
       .catch(caught => {
-        console.error(
-          "Failed message and contact update on twilio postMessageSend",
-          caught
-        );
+        log.error({
+          category: 'twilio',
+          event: 'postMessageSend',
+          err: caught
+        }, "Failed message and contact update");
         reject(caught);
       });
   }
@@ -519,10 +538,15 @@ export async function handleDeliveryReport(report) {
     // we skip writing to the database.
     // Log just in case we need to debug something. Detailed logs can be viewed here:
     // https://www.twilio.com/log/sms/logs/<SID>
-    log.info(`Message status ${messageSid}: ${messageStatus}`);
     if (messageStatus === "queued" || messageStatus === "sent") {
       return;
     }
+    log.info({
+      category: "twilio",
+      event: 'handleDeliveryReport',
+      messageSid,
+      messageStatus
+    });
 
     if (ENABLE_DB_LOG) {
       await Log.save({
@@ -561,7 +585,11 @@ export async function handleIncomingMessage(message) {
     !message.hasOwnProperty("Body") ||
     !message.hasOwnProperty("MessageSid")
   ) {
-    log.error(`This is not an incoming message: ${JSON.stringify(message)}`);
+    log.error({
+      category: 'twilio',
+      event: 'handleIncomingMessage',
+      msgData: message
+    }, "This is not an incoming message");
   }
 
   const { From, To, MessageSid } = message;
@@ -581,7 +609,13 @@ export async function handleIncomingMessage(message) {
     const finalMessage = await convertMessagePartsToMessage([
       pendingMessagePart
     ]);
-    console.log("Contact reply", finalMessage, pendingMessagePart);
+    log.info({
+      category: 'twilio',
+      event: 'handleIncomingMessage',
+      msgType: 'incoming',
+      from: finalMessage.contact_number,
+      text: finalMessage.text
+    });
     if (finalMessage) {
       if (message.spokeCreatedAt) {
         finalMessage.created_at = message.spokeCreatedAt;
@@ -664,7 +698,6 @@ export async function getContactInfo({
     if (phoneNumber.callerName) {
       contactInfo.lookup_name = phoneNumber.callerName;
     }
-    // console.log('twilio.getContactInfo', contactInfo, phoneNumber);
     return contactInfo;
   } catch (err) {
     /* oddly, very rarely Twilio returns a 404 error message
@@ -694,7 +727,12 @@ export async function getContactInfo({
  * Create a new Twilio messaging service
  */
 export async function createMessagingService(organization, friendlyName) {
-  console.log("twilio.createMessagingService", organization.id, friendlyName);
+  log.info({
+    category: 'twilio',
+    event: 'createMessagingService',
+    org: organization.id,
+    friendlyName
+  });
   const twilio = await exports.getTwilio(organization);
   const twilioBaseUrl =
     getConfig("TWILIO_BASE_CALLBACK_URL", organization) ||
@@ -789,7 +827,12 @@ async function buyNumber(
     throw new Error(`Error buying twilio number: ${response.error}`);
   }
 
-  log.debug(`Bought number ${phoneNumber} [${response.sid}]`);
+  log.info({
+    category: 'twilio',
+    event: 'buyNumber',
+    phoneNumber,
+    sid: response.sid
+  }, "Bought number");
 
   let allocationFields = {};
   let messagingServiceSid = messageServiceSid;
@@ -849,7 +892,12 @@ export async function buyNumbersInAreaCode(
   const messageServiceSid = await getMessageServiceSid(organization);
   async function buyBatch(size) {
     let successCount = 0;
-    log.debug(`Attempting to buy batch of ${size} numbers`);
+    log.debug({
+      category: 'twilio',
+      event: 'buyNumbersInAreaCode',
+      areaCode,
+      size
+    }, `Attempting to buy batch of ${size} numbers`);
 
     const response = await searchForAvailableNumbers(
       twilioInstance,
@@ -869,7 +917,12 @@ export async function buyNumbersInAreaCode(
       successCount++;
     });
 
-    log.debug(`Successfully bought ${successCount} number(s)`);
+    log.info({
+      category: 'twilio',
+      event: 'buyNumbersInAreaCode',
+      areaCode,
+      successCount
+    }, `Successfully bought ${successCount} number(s)`);
     return successCount;
   }
 
@@ -880,7 +933,10 @@ export async function buyNumbersInAreaCode(
     const purchasedInBatch = await buyBatch(nextBatchSize);
     totalPurchased += purchasedInBatch;
     if (purchasedInBatch === 0) {
-      log.warn("Failed to buy as many numbers as requested");
+      log.warn({
+        category: 'twilio',
+        event: 'buyNumbersInAreaCode',
+      }, "Failed to buy as many numbers as requested")
       break;
     }
   }
@@ -912,14 +968,22 @@ async function deleteNumber(twilioInstance, phoneSid, phoneNumber) {
       // safe to delete from Spoke inventory. Otherwise, throw error and
       // don't delete from Spoke.
       if (err.code === 20404) {
-        log.error(
-          `Number not found in Twilio, may have already been released: ${phoneNumber} [${phoneSid}]`
-        );
+        log.warn({
+          category: 'twilio',
+          event: 'deleteNumber',
+          phoneNumber,
+          phoneSid
+        }, "Number not found in Twilio, may have already been released");
       } else {
         throw new Error(`Error deleting twilio number: ${err}`);
       }
     });
-  log.debug(`Deleted number ${phoneNumber} [${phoneSid}]`);
+  log.info({
+    category: 'twilio',
+    event: 'deleteNumber',
+    phoneNumber,
+    phoneSid
+  }, "Deleted number");
   return await r
     .knex("owned_phone_number")
     .del()
@@ -950,7 +1014,12 @@ export async function deleteNumbersInAreaCode(organization, areaCode) {
     await deleteNumber(twilioInstance, n.service_id, n.phone_number);
     successCount++;
   }
-  log.debug(`Successfully deleted ${successCount} number(s)`);
+  log.info({
+    category: 'twilio',
+    event: 'deleteNumbersInAreaCode',
+    successCount,
+    areaCode
+  }, `Successfully deleted ${successCount} number(s)`);
   return successCount;
 }
 
@@ -959,7 +1028,11 @@ export async function deleteMessagingService(
   messagingServiceSid
 ) {
   const twilioInstance = await exports.getTwilio(organization);
-  console.log("Deleting messaging service", messagingServiceSid);
+  log.info({
+    category: 'twilio',
+    event: 'deleteMessagingService',
+    messagingServiceSid
+  }, "Deleting messaging service");
   return twilioInstance.messaging.services(messagingServiceSid).remove();
 }
 
@@ -968,7 +1041,11 @@ export async function clearMessagingServicePhones(
   messagingServiceSid
 ) {
   const twilioInstance = await exports.getTwilio(organization);
-  console.log("Deleting phones from messaging service", messagingServiceSid);
+  log.info({
+    category: 'twilio',
+    event: 'clearMessagingServicePhones',
+    messagingServiceSid
+  }, "Deleting phones from messaging service");
 
   const phones = await twilioInstance.messaging
     .services(messagingServiceSid)
@@ -1134,7 +1211,11 @@ export const updateConfig = async (
       await twilio.api.accounts.list();
     }
   } catch (err) {
-    console.log("twilio.updateConfig client error", err);
+    log.error({
+      category: 'twilio',
+      event: 'updateConfig',
+      err
+    }, "Invalid Twilio credentials");
     throw new Error("Invalid Twilio credentials");
   }
 

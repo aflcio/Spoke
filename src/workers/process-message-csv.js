@@ -1,5 +1,6 @@
 import { loadMessages } from "./jobs";
 import fs from "fs";
+import log from "../server/log";
 
 const csvFilename = process.argv.filter(f => /\.csv/.test(f))[0];
 
@@ -11,9 +12,8 @@ new Promise((resolve, reject) => {
         process.exit();
       })
       .catch(err => {
-        console.log(err);
+        log.error(err);
         reject(err);
-        console.log("Error", err);
         process.exit();
       });
   });

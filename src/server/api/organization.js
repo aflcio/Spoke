@@ -15,6 +15,7 @@ import {
   getServiceMetadata
 } from "../../extensions/service-vendors";
 import { getServiceManagerData } from "../../extensions/service-managers";
+import log from "../log";
 
 export const ownerConfigurable = {
   // ACTION_HANDLERS: 1,
@@ -250,7 +251,7 @@ export const resolvers = {
           )
         };
       } catch (caught) {
-        console.log("organization.messageService error", caught);
+        log.error(caught, "organization.messageService error");
         return null;
       }
     },
@@ -271,7 +272,7 @@ export const resolvers = {
           ...r
         }));
       } catch (err) {
-        console.log("orgaization.serviceManagers error", err);
+        log.error(err, "orgaization.serviceManagers error");
         return [];
       }
     },

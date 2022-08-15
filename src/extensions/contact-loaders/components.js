@@ -1,4 +1,5 @@
 import { getConfig } from "../../server/api/lib/config";
+import log from "../../server/log";
 
 function getComponents() {
   const enabledComponents = (
@@ -10,7 +11,10 @@ function getComponents() {
       const c = require(`./${componentName}/react-component.js`);
       components[componentName] = c.CampaignContactsForm;
     } catch (err) {
-      console.error("CONTACT_LOADERS failed to load component", componentName);
+      log.error({
+        category: 'extension',
+        err,
+      }, `CONTACT_LOADERS failed to load component ${componentName}`);
     }
   });
   return components;

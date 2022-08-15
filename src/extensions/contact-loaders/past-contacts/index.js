@@ -5,6 +5,7 @@ import queryString from "query-string";
 import { getConversationFiltersFromQuery } from "../../../lib";
 import { getConversations } from "../../../server/api/conversations";
 import { getTags } from "../../../server/api/tag";
+import log from "../../../server/log";
 
 export const name = "past-contacts";
 
@@ -127,12 +128,13 @@ export async function processContactLoad(job, maxContacts) {
       null,
       { justIdQuery: true }
     );
-    console.log(
-      "contactData.pastContactsQuery",
-      contactData.pastContactsQuery,
+    log.info({
+      category: name,
+      event: 'pastContactsQuery',
+      query: contactData.pastContactsQuery,
       params,
-      ccIdQuery.toString()
-    );
+      ccIdQuery: ccIdQuery.toString(),
+    });
     const campaignExtraFieldsQuery = ccIdQuery.query.clone();
     const extraFields = await campaignExtraFieldsQuery
       .clearSelect()
@@ -146,7 +148,6 @@ export async function processContactLoad(job, maxContacts) {
     if (extraFields.length > 1) {
       function intersection(o1, o2) {
         const res = o1.filter(a => o2.indexOf(a) !== -1);
-        console.log("intersection", o1, o2, res);
         return res;
       }
       const firstFields = Object.keys(
@@ -155,7 +156,11 @@ export async function processContactLoad(job, maxContacts) {
       minExtraFields = extraFields
         .map(o => Object.keys(JSON.parse(o.custom_fields_example)))
         .reduce(intersection, firstFields);
-      console.log("extraFieldsScrubbing", extraFields, "min", minExtraFields);
+      log.info({
+        category: name,
+        extraFieldsScrubbing: extraFields,
+        min: minExtraFields
+      });
       if (minExtraFields.length !== firstFields.length) {
         extraFieldsNeedsScrubbing = true;
       }

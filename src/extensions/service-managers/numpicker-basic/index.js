@@ -1,6 +1,7 @@
 /// All functions are OPTIONAL EXCEPT metadata() and const name=.
 /// DO NOT IMPLEMENT ANYTHING YOU WILL NOT USE -- the existence of a function adds behavior/UI (sometimes costly)
 
+import log from "../../../server/log";
 import { r, cacheableData } from "../../../server/models";
 
 export const name = "numpicker-basic";
@@ -24,12 +25,13 @@ export async function onMessageSend({
   campaign,
   serviceManagerData
 }) {
-  console.log(
-    "numpicker-basic.onMessageSend",
-    message.id,
-    message.user_number,
+  log.info({
+    category: name,
+    event: 'onMessageSend',
+    messageId: message.id,
+    userNumber: message.user_number,
     serviceManagerData
-  );
+  });
   if (
     message.user_number ||
     (serviceManagerData && serviceManagerData.user_number)
@@ -48,17 +50,22 @@ export async function onMessageSend({
     .orderByRaw("random()")
     .select("phone_number")
     .first();
-  console.log("numpicker-basic.onMessageSend selectedPhone", selectedPhone);
+  log.info({
+    category: name,
+    event: 'selectedPhone',
+    selectedPhone
+  });
   // TODO: caching
   // TODO: something better than pure rotation -- maybe with caching we use metrics
   //   based on sad deliveryreports
   if (selectedPhone && selectedPhone.phone_number) {
     return { user_number: selectedPhone.phone_number };
   } else {
-    console.log(
-      "numpicker-basic.onMessageSend none found",
+    log.warn({
+      category: name,
+      event: 'onMessageSend',
       serviceName,
-      organization.id
-    );
+      orgId: organization.id,
+    }, "None found");
   }
 }

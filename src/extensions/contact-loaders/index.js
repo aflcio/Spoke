@@ -1,4 +1,5 @@
 import { getConfig } from "../../server/api/lib/config";
+import log from "../../server/log";
 import { r } from "../../server/models";
 
 const availabilityCacheKey = (name, organizationId, userId) =>
@@ -134,7 +135,10 @@ function getIngestMethods() {
       const c = require(`./${name}/index.js`);
       ingestMethods[name] = c;
     } catch (err) {
-      console.error("CONTACT_LOADERS failed to load ingestMethod", name, err);
+      log.error({
+        category: 'extension',
+        err
+      }, `CONTACT_LOADERS failed to load ingestMethod ${name}`);
     }
   });
   return ingestMethods;

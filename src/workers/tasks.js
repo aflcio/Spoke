@@ -5,6 +5,7 @@ import serviceMap from "../extensions/service-vendors";
 import * as ActionHandlers from "../extensions/action-handlers";
 import { r, cacheableData } from "../server/models";
 import { processServiceManagers } from "../extensions/service-managers";
+import log from "../server/log";
 
 export const Tasks = Object.freeze({
   ACTION_HANDLER_QUESTION_RESPONSE: "action_handler:question_response",
@@ -138,12 +139,10 @@ const startCampaignCache = async ({ campaign, organization }, contextVars) => {
   const loadContacts = cacheableData.campaignContact
     .loadMany(campaign, organization, contextVars || {})
     .then(() => {
-      // eslint-disable-next-line no-console
-      console.log("FINISHED contact loadMany", campaign.id);
+      log.info({category: 'tasks', event: 'startCampaignCache', campaignId: campaign.id}, "FINISHED contact loadMany");
     })
     .catch(err => {
-      // eslint-disable-next-line no-console
-      console.error("ERROR contact loadMany", campaign.id, err, campaign);
+      log.error({category: 'tasks', event: 'startCampaignCache', campaignId: campaign.id, campaign, err}, "ERROR contact loadMany");
     });
   const loadOptOuts = cacheableData.optOut.loadMany(organization.id);
 
