@@ -2,6 +2,7 @@ const Config = require("../../../src/server/api/lib/config");
 const Van = require("../../../src/extensions/message-handlers/ngpvan");
 const VanAction = require("../../../src/extensions/action-handlers/ngpvan-action");
 const ActionHandlers = require("../../../src/extensions/action-handlers");
+const { default: log } = require("../../../src/server/log");
 
 describe("extensions.message-handlers.ngpvan", () => {
   afterEach(async () => {
@@ -70,7 +71,7 @@ describe("extensions.message-handlers.ngpvan", () => {
       beforeEach(async () => {
         ActionHandlers.getActionChoiceData.mockRestore();
         jest.spyOn(ActionHandlers, "getActionChoiceData").mockResolvedValue([]);
-        jest.spyOn(console, "error");
+        jest.spyOn(log, "error");
       });
 
       it("Does not call Van.postCanvassResponse and logs an error", async () => {
@@ -80,12 +81,11 @@ describe("extensions.message-handlers.ngpvan", () => {
           organization
         });
 
-        // eslint-disable-next-line no-console
-        expect(console.error.mock.calls).toEqual([
-          [
-            "NGPVAN message handler -- not handling message because no action choice data found for Texted"
-          ]
-        ]);
+        expect(log.error.mock.calls).toEqual([[{
+          category: 'ngpvan',
+          event: 'postMessageSave',
+          initialTextResult: "Texted"
+        }, 'Not handling message because no action choice data found']]);
         expect(VanAction.postCanvassResponse).not.toHaveBeenCalled();
       });
     });

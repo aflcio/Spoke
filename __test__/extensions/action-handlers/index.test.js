@@ -9,7 +9,7 @@ const ActionHandlers = require("../../../src/extensions/action-handlers");
 const uuidv4 = require("uuid").v4;
 const TestAction = require("../../../src/extensions/action-handlers/test-action");
 const ComplexTestAction = require("../../../src/extensions/action-handlers/complex-test-action");
-const log = require("../../../src/lib").log;
+const { default: log } = require("../../../src/server/log");
 
 describe("action-handlers/index", () => {
   let organization;

@@ -146,7 +146,7 @@
     "pg": "^8.0.3",
     "pg-connection-string": "^2.4.0",
     "pg-query-stream": "^1.1.1",
-    "pino": "^8.4.0",
+    "pino": "^7.11.0",
     "prop-types": "^15.6.0",
     "query-string": "^4.1.0",
     "react": "16.14.0",

@@ -1,5 +1,3 @@
-import log from "../src/server/log";
-
 const path = require("path");
 const webpack = require("webpack");
 const ManifestPlugin = require("webpack-manifest-plugin");
@@ -26,7 +24,7 @@ const jsxLoaders = [{ loader: "babel-loader" }];
 const assetsDir = process.env.ASSETS_DIR || "./build/client/assets";
 const assetMapFile = process.env.ASSETS_MAP_FILE || "assets.json";
 const outputFile = DEBUG ? "[name].js" : "[name].[hash].js";
-log.info("Configuring Webpack with %o", {
+console.log("Configuring Webpack with", {
   assetsDir,
   assetMapFile,
   outputFile

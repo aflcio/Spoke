@@ -376,8 +376,8 @@ const messageCache = {
         campaign_contact_id: messageToSave.campaign_contact_id,
         cell: messageToSave.contact_number,
         campaignId,
-        orgId: organization.id,
-        org: organization.name,
+        orgId: organization && organization.id,
+        org: organization && organization.name,
         texterId: messageToSave.user_id,
         type: messageToSave.is_from_contact ? "received" : "sent",
         initial: contact && contact.message_status === "needsMessage"
