@@ -3,10 +3,10 @@ import {
   validateActionHandlerWithClientChoices
 } from "../../../src/extensions/action-handlers";
 import nock from "nock";
+import log from "../../../src/server/log";
 
 const ZapierAction = require("../../../src/extensions/action-handlers/zapier-action");
 require("../../test_helpers");
-const log = require("../../../src/lib").log;
 
 afterEach(async () => {
   jest.restoreAllMocks();

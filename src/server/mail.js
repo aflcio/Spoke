@@ -1,4 +1,4 @@
-import { log } from "../lib";
+import log from "./log";
 import { getConfig } from "./api/lib/config";
 import nodemailer from "nodemailer";
 import mailgunConstructor from "mailgun-js";

@@ -1,3 +1,4 @@
+import log from "../../../server/log";
 import { r } from "../../../server/models";
 
 export const serverAdministratorInstructions = () => {
@@ -65,14 +66,14 @@ export const preMessageSave = async ({
       matchFailed = false;
     }
     if (matchFailed) {
-      console.log(
-        "initialtext-guard: detected different initial message",
-        texter.id,
-        contact.id,
-        messageToSave.text,
+      log.info({
+        category: 'initialtext-guard',
+        texterId: texter.id,
+        conteactId: contact.id,
+        msgText: messageToSave.text,
         initialScript,
         regexScript
-      );
+      }, "initialtext-guard: detected different initial message");
       // // BLOCKED BY CASE: a script was recently edited,
       // // and the texter sends what their local script is.
       //

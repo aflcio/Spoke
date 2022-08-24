@@ -33,11 +33,6 @@ export async function sendMessage({
     error_code: errorCode ? errorCode[1] : null
   };
 
-  // console.log(
-  //   "fakeservice sendMessage",
-  //   message && message.id,
-  //   contact && contact.id
-  // );
   if (message && message.id) {
     let request = r.knex("message");
     if (trx) {

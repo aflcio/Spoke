@@ -5,6 +5,7 @@ import { Jobs } from "../../../workers/job-processes";
 import { Tasks } from "../../../workers/tasks";
 import { jobRunner } from "../../job-runners";
 import { getServiceFromOrganization } from "../../service-vendors";
+import log from "../../../server/log";
 // / All functions are OPTIONAL EXCEPT metadata() and const name=.
 // / DO NOT IMPLEMENT ANYTHING YOU WILL NOT USE -- the existence of a function adds behavior/UI (sometimes costly)
 
@@ -132,13 +133,13 @@ export async function getCampaignData({
 
 export async function processJobNumberLookups(job, payload) {
   // called async from onCampaignUpdateSignal
-  console.log(
-    "scrub-bad-mobilenums.processJobNumberLookups",
+  log.info({
+    category: name,
+    event: 'processJobNumberLookups',
     job,
     payload,
-    "organization",
-    job.organization_id
-  );
+    org: job.organization_id
+  });
   // maxes out in 15min for around 20K contacts, we we recycle tasks from that time.
   await jobRunner.dispatchTask(Tasks.EXTENSION_TASK, {
     method: "nextBatchJobLookups",
@@ -157,21 +158,25 @@ export async function nextBatchJobLookups({
   lastCount
 }) {
   // called async from processJobNumberLookups which in-turn is called by onCampaignUpdateSignal
-  console.log(
-    "scrub-bad-mobilenums.nextBatchJobLookups",
+  log.info({
+    category: name,
+    event: 'nextBatchJobLookups',
     job,
-    "organization",
-    job.organization_id,
+    org: job.organization_id,
     steps,
     lastCount,
     lookupCount
-  );
+  });
   const jobStillExists = await r
     .knex("job_request")
     .where("id", job.id)
     .first();
   if (!jobStillExists) {
-    console.log("scrub-bad-mobilenums aborted job", job.id);
+    log.info({
+      category: name,
+      event: 'aborted job',
+      jobId: job.id
+    });
     return;
   }
 
@@ -206,14 +211,15 @@ export async function nextBatchJobLookups({
       .knex("job_request")
       .where("id", job.id)
       .delete();
-    console.log(
-      "scrub-bad-mobilenums finsihed job",
-      job.id,
-      job.organization_id,
-      contacts.length,
+    log.info({
+      category: name,
+      event: 'finished job',
+      jobId: job.id,
+      org: job.organization_id,
+      contacts: contacts.length,
       lastCount,
       steps
-    );
+    });
     return; // END FINSIHED
   }
 
@@ -230,12 +236,10 @@ export async function nextBatchJobLookups({
       const chunk = chunks[i];
       const lookupChunk = await Promise.all(
         chunk.map(async contact => {
-          // console.log("scrub.lookupChunk", contact);
           const info = await serviceClient.getContactInfo({
             organization,
             contactNumber: contact.cell
           });
-          // console.log('scrub-bad-mobilenums lookup result', info);
           return {
             ...contact,
             ...info
@@ -298,14 +302,16 @@ export async function nextBatchJobLookups({
   } catch (err) {
     // this at least clears the job from the client and gives us a clue in logs
     // TODO: how to send error message to client?
-    console.log(
-      "scrub-bad-mobilenums job FAILED",
-      job.id,
-      job.organization_id,
-      contacts.length,
+    log.error({
+      category: name,
+      event: 'job FAILED',
+      jobId: job.id,
+      org: job.organization_id,
+      contacts: contacts.length,
       lastCount,
-      steps
-    );
+      steps,
+      err
+    });
     await r
       .knex("job_request")
       .where("id", job.id)
@@ -375,7 +381,12 @@ export async function onCampaignContactLoad({
   // 2. Delete known landlines
   const deletedCount = await deleteLandlineContacts(campaign.id);
 
-  console.log("Landline removal result", campaign.id, deletedCount);
+  log.info({
+    category: name,
+    event: 'Landline removal result',
+    campaignId: campaign.id,
+    deletedCount
+  });
   await cacheableData.campaign.setFeatures(campaign.id, {
     scrubBadMobileNumsDeletedOnUpload: deletedCount
   });

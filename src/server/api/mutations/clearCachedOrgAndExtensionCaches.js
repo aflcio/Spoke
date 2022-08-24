@@ -3,6 +3,7 @@ import { clearCacheForOrganization as clearContactLoaderCaches } from "../../../
 import { clearCacheForOrganization as clearActionHandlerCaches } from "../../../extensions/action-handlers";
 import cacheable from "../../../server/models/cacheable_queries";
 import { r } from "../../../server/models";
+import log from "../../log";
 
 export const clearCachedOrgAndExtensionCaches = async (
   _,
@@ -19,8 +20,7 @@ export const clearCachedOrgAndExtensionCaches = async (
     await cacheable.organization.clear(organizationId);
     await cacheable.organization.load(organizationId);
   } catch (caught) {
-    // eslint-disable-next-line no-console
-    console.error(`Error while clearing organization cache. ${caught}`);
+    log.error(caught, 'Error while clearing organization cache');
   }
 
   const promises = [
@@ -31,8 +31,7 @@ export const clearCachedOrgAndExtensionCaches = async (
   try {
     await Promise.all(promises);
   } catch (caught) {
-    // eslint-disable-next-line no-console
-    console.error(`Error while clearing extension caches. ${caught}`);
+    log.error(caught, 'Error while clearing extension caches');
   }
 
   return "Cleared organization and extension caches";

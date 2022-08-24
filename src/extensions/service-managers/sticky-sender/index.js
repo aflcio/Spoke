@@ -6,6 +6,7 @@
 /// All functions are OPTIONAL EXCEPT metadata() and const name=.
 /// DO NOT IMPLEMENT ANYTHING YOU WILL NOT USE -- the existence of a function adds behavior/UI (sometimes costly)
 
+import log from "../../../server/log";
 import { cacheableData } from "../../../server/models";
 
 export const name = "sticky-sender";
@@ -29,12 +30,13 @@ export async function onMessageSend({
   campaign,
   serviceManagerData
 }) {
-  console.log(
-    "sticky-sender.onMessageSend",
-    message.id,
-    message.user_number,
+  log.info({
+    category: name,
+    event: 'onMessageSend',
+    msgId: message.id,
+    userNumber: message.user_number,
     serviceManagerData
-  );
+  });
   if (
     message.user_number ||
     (serviceManagerData && serviceManagerData.user_number)

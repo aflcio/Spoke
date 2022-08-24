@@ -1,7 +1,7 @@
 import "babel-polyfill";
 import bodyParser from "body-parser";
 import express from "express";
-import { log } from "../lib";
+import log  from "./log";
 import renderIndex from "./middleware/render-index";
 import fs, { existsSync } from "fs";
 import path from "path";

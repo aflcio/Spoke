@@ -1,6 +1,6 @@
 import { ApiController, Client } from "@bandwidth/messaging";
 
-import { log } from "../../../lib";
+import log from "../../../server/log";
 import { getFormattedPhoneNumber } from "../../../lib/phone-format";
 import { getConfig, hasConfig } from "../../../server/api/lib/config";
 import { r, cacheableData, Log, Message } from "../../../server/models";
@@ -66,12 +66,12 @@ export async function sendMessage({
     message.user_number ||
     config.userNumber;
 
-  console.log(
-    "bandwidth.sendMessage",
-    applicationId,
+  log.info({
+    category: 'bandwidth',
+    event: 'sendMessage',
     userNumber,
-    message.contact_number
-  );
+    contactNumber: message.contact_number
+  });
 
   if (!userNumber) {
     throw new Error(
@@ -137,13 +137,18 @@ export async function sendMessage({
       config.accountId,
       bandwidthMessage
     );
-    console.log(
-      "bandwidth.sendMessage createMessage response",
-      response && response.statusCode,
-      response && response.result
-    );
+    log.info({
+      category: 'bandwidth',
+      event: 'sendMessage createMessage response',
+      statusCode: response && response.statusCode,
+      result: response && response.result
+    });
   } catch (err) {
-    console.log("bandwidth.sendMessage ERROR", err);
+    log.error({
+      category: 'bandwidth',
+      event: 'sendMessage',
+      err
+    });
     await postMessageSend({
       err,
       message,
@@ -220,10 +225,18 @@ export async function handleIncomingMessage(message, { orgId }) {
     !message.hasOwnProperty("to") ||
     message.type !== "message-received"
   ) {
-    log.error(`This is not an incoming message: ${JSON.stringify(message)}`);
+    log.error({
+      category: 'bandwidth',
+      event: 'handleIncomingMessage',
+      msgData: message
+    }, "This is not an incoming message");
     return;
   }
-  console.log("bandwidth.handleIncomingMessage", JSON.stringify(message));
+  log.info({
+    category: 'bandwidth',
+    event: 'handleIncomingMessage',
+    msgData: message
+  });
   const { id, from, text, applicationId, media } = message.message;
   const contactNumber = getFormattedPhoneNumber(from);
   const userNumber = message.to ? getFormattedPhoneNumber(message.to) : "";
@@ -258,7 +271,11 @@ export async function handleIncomingMessage(message, { orgId }) {
 export async function handleDeliveryReport(report, { orgId }) {
   // https://dev.bandwidth.com/messaging/callbacks/msgDelivered.html
   // https://dev.bandwidth.com/messaging/callbacks/messageFailed.html
-  console.log("bandwidth.handleDeliveryReport", report);
+  log.info({
+    category: 'bandwidth',
+    event: 'handleDeliveryReport',
+    report
+  });
   const { id, from, applicationId, tag } = report.message;
   const contactNumber = getFormattedPhoneNumber(report.to);
   const userNumber = from ? getFormattedPhoneNumber(from) : "";
@@ -318,7 +335,11 @@ export async function getFreeContactInfo({
       1 // limit
     );
   }
-  console.log("carrier-lookup", messageData);
+  log.info({
+    category: 'bandwidth',
+    event: 'carrier-lookup',
+    messageData
+  })
   if (messageData && messageData.messages && messageData.messages.length) {
     const carrier = messageData.messages[0].carrierName;
     return { carrier };

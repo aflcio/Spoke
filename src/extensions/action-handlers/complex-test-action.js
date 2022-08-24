@@ -1,4 +1,5 @@
 import request from "request";
+import log from "../../server/log";
 import { r } from "../../server/models";
 
 export const name = "complex-test-action";
@@ -75,13 +76,7 @@ export async function processAction({
 // previousValue} .
 
 export async function processDeletedQuestionResponse(options) {
-  console.log(
-    `complex-test-action handler called with parameters ${JSON.stringify(
-      options,
-      "",
-      2
-    )}`
-  );
+  log.info({parameters: options}, 'complex-test-action handler called with parameters');
 }
 
 export async function getClientChoiceData(organization, user) {

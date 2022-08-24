@@ -5,6 +5,7 @@ import {
   processServiceManagers,
   serviceManagersHaveImplementation
 } from "../../../extensions/service-managers";
+import log from "../../log";
 
 // STRUCTURE
 // SET by organization, so optout-<organization_id> has a <cell> key
@@ -109,19 +110,20 @@ const optOutCache = {
       loadMany(organizationId)
         .then(optOutCount => {
           if (!global.TEST_ENVIRONMENT) {
-            console.log(
-              "optOutCache loaded for organization",
+            log.info({
+              category: 'optOutCache',
+              event: 'loaded',
               organizationId,
               optOutCount
-            );
+            });
           }
         })
         .catch(err => {
-          console.log(
-            "optOutCache Error for organization",
+          log.error({
+            category: 'optOutCache',
             organizationId,
             err
-          );
+          });
         });
     }
     const dbResult = await r

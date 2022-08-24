@@ -1,3 +1,4 @@
+import log from "../../log";
 import { r, cacheableData } from "../../models";
 import { assignmentRequiredOrAdminRole } from "../errors";
 
@@ -54,10 +55,7 @@ export const updateFeedback = async (
     }
     return { id: assignmentId, feedback };
   } catch (err) {
-    // eslint-disable-next-line no-console
-    console.error(
-      `Error saving assignment texter feedback for assignmentId ${assignmentId}`
-    );
+    log.error({assignmentId, err}, "Error saving assignment texter feedback");
     throw err;
   }
 };

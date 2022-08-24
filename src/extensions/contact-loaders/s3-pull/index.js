@@ -6,8 +6,9 @@ import {
 } from "../../../workers/jobs";
 import { r } from "../../../server/models";
 import { getConfig, hasConfig } from "../../../server/api/lib/config";
+import log from "../../../server/log";
 import { getFormattedPhoneNumber } from "../../../lib/phone-format.js";
-import { log, gunzip } from "../../../lib";
+import { gunzip } from "../../../lib";
 
 import path from "path";
 import Papa from "papaparse";
@@ -120,11 +121,11 @@ export async function loadContactS3PullProcessFile(jobEvent, contextVars) {
       skipEmptyLines: true,
       escapeChar: "\\",
       error: (err, file, inputElem, reason) => {
-        console.log("s3pull ERROR", err, reason);
+        log.error({category: name, reason, err}, "s3pull ERROR")
         resolve({ errors: [err] });
       },
       complete: ({ data, errors, meta }) => {
-        console.log("s3pull data", data.length, errors, meta);
+        log.info({category: name, length: data.length, errors, meta}, "s3pull data");
         resolve({ data, errors });
       }
     });
@@ -180,9 +181,9 @@ export async function loadContactS3PullProcessFile(jobEvent, contextVars) {
       .select("status")
       .first();
     if (!jobCompleted) {
-      console.log(
-        "loadContactS3PullProcessFile job no longer exists",
-        jobEvent
+      log.info(
+        {category: name, jobEvent},
+        "loadContactS3PullProcessFile job no longer exists"
       );
       return { alreadyComplete: 1 };
     }
@@ -205,10 +206,10 @@ export async function loadContactS3PullProcessFile(jobEvent, contextVars) {
       command: "loadContactS3PullProcessFileJob"
     };
     if (process.env.WAREHOUSE_DB_LAMBDA_ITERATION) {
-      console.log(
-        "SENDING TO LAMBDA loadContactS3PullProcessFileJob",
+      log.info({
+        category: name,
         newJobEvent
-      );
+      }, "SENDING TO LAMBDA loadContactS3PullProcessFileJob");
       await sendJobToAWSLambda(newJobEvent);
       return { invokedAgain: 1 };
     } else {
@@ -224,7 +225,7 @@ export async function loadContactS3PullProcessFile(jobEvent, contextVars) {
       .andWhere("campaign_id", campaign_id)
       .delete()
       .then(result => {
-        console.log(
+        log.info({category: name},
           `loadContactS3PullProcessFile # of contacts with invalid cells removed from DW query (${campaign_id}): ${result}`
         );
         validationStats.invalidCellCount = result;
@@ -251,7 +252,11 @@ export async function loadContactS3PullProcessFile(jobEvent, contextVars) {
 }
 
 export async function processContactLoad(job, maxContacts, organization) {
-  console.log("STARTING s3-pull load", job.id, job.payload);
+  log.info({
+    category: name,
+    jobId: job.id,
+    payload: job.payload
+  }, "STARTING s3-pull load");
   const jobMessages = [];
   const s3Path = JSON.parse(job.payload).s3Path;
   const s3Bucket = getConfig("AWS_S3_BUCKET_NAME", organization);
@@ -264,7 +269,6 @@ export async function processContactLoad(job, maxContacts, organization) {
   const manifestPath = s3Path.endsWith("manifest")
     ? s3Path
     : path.join(s3Path, "manifest");
-  console.log("s3-pull manifest path: ", manifestPath.replace(/^\//, ""));
   let manifestData;
   try {
     const manifestFile = await s3
@@ -286,7 +290,7 @@ export async function processContactLoad(job, maxContacts, organization) {
     );
     return;
   }
-  console.log("s3-pull manifest found", manifestData);
+  log.info({category: name, manifestData}, "s3-pull manifest found");
   // 1. check manifestData.schema -- if not demand "MANIFEST VERBOSE"
   if (!manifestData.schema || !manifestData.schema.elements) {
     await failedContactLoad(

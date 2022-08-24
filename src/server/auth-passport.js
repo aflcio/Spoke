@@ -6,6 +6,7 @@ import { User, cacheableData } from "./models";
 import localAuthHelpers from "./local-auth-helpers";
 import wrap from "./wrap";
 import { capitalizeWord } from "./api/lib/utils";
+import log from "./log";
 
 export const nextUrlRedirect = (nextUrl, defaultPath) =>
   nextUrl && !nextUrl.startsWith("http") ? nextUrl : defaultPath || "/";
@@ -181,7 +182,7 @@ export function setupSlackPassport(app) {
     wrap(async (id, done) => {
       if (typeof id !== "string") {
         // probably switched from password auth to slack auth
-        console.error(`Got non-string ID in slack passport deserialize: ${id}`);
+        log.error(`Got non-string ID in slack passport deserialize: ${id}`);
         done(null, false);
         return;
       }
@@ -189,13 +190,13 @@ export function setupSlackPassport(app) {
       const [loginType, teamId, userId] = id.split("|");
 
       if (loginType !== "slack") {
-        console.error(`Invalid loginType in session token: ${loginType}`);
+        log.error(`Invalid loginType in session token: ${loginType}`);
         done(null, false);
         return;
       }
 
       if (teamId !== process.env.SLACK_TEAM_ID) {
-        console.error(`Invalid team ID in session token: ${teamId}`);
+        log.error(`Invalid team ID in session token: ${teamId}`);
         done(null, false);
         return;
       }

@@ -1,6 +1,7 @@
 import { getConfig, getFeatures } from "../../../server/api/lib/config";
 import { cacheableData } from "../../../server/models";
 import { sendRawMessage } from "../../../server/api/mutations/sendMessage";
+import log from "../../../server/log";
 
 const DEFAULT_AUTO_OPTOUT_REGEX_LIST_BASE64 =
   "W3sicmVnZXgiOiAiXlxccypzdG9wXFxifFxcYnJlbW92ZSBtZVxccyokfHJlbW92ZSBteSBuYW1lfFxcYnRha2UgbWUgb2ZmIHRoXFx3KyBsaXN0fFxcYmxvc2UgbXkgbnVtYmVyfGRvblxcVz90IGNvbnRhY3QgbWV8ZGVsZXRlIG15IG51bWJlcnxJIG9wdCBvdXR8c3RvcDJxdWl0fHN0b3BhbGx8Xlxccyp1bnN1YnNjcmliZVxccyokfF5cXHMqY2FuY2VsXFxzKiR8XlxccyplbmRcXHMqJHxeXFxzKnF1aXRcXHMqJCIsICJyZWFzb24iOiAic3RvcCJ9XQ==";
@@ -34,11 +35,8 @@ export const available = organization => {
   try {
     JSON.parse(Buffer.from(conf, "base64").toString());
     return true;
-  } catch (e) {
-    console.log(
-      "message-handler/auto-optout JSON parse of AUTO_OPTOUT_REGEX_LIST_BASE64 failed",
-      e
-    );
+  } catch (err) {
+    log.error(err, "message-handler/auto-optout JSON parse of AUTO_OPTOUT_REGEX_LIST_BASE64 failed");
     return false;
   }
 };
@@ -55,13 +53,12 @@ export const preMessageSave = async ({ messageToSave, organization }) => {
       const re = new RegExp(matcher.regex, "i");
       return String(messageToSave.text).match(re);
     });
-    // console.log("auto-optout", matches, messageToSave.text, regexList);
     if (matches.length) {
-      console.log(
-        "auto-optout MATCH",
-        messageToSave.campaign_contact_id,
+      log.info({
+        category: 'auto-optout',
+        contactId: messageToSave.campaign_contact_id,
         matches
-      );
+      }, "auto-optout MATCH");
       const reason = matches[0].reason || "auto_optout";
       messageToSave.error_code = -133;
       return {
@@ -87,11 +84,11 @@ export const postMessageSave = async ({
   campaign
 }) => {
   if (message.is_from_contact && handlerContext.autoOptOutReason) {
-    console.log(
-      "auto-optout.postMessageSave",
-      message.campaign_contact_id,
-      handlerContext.autoOptOutReason
-    );
+    log.info({
+      category: 'auto-optout',
+      contactId: message.campaign_contact_id,
+      reason: handlerContext.autoOptOutReason,
+    }, "auto-optout.postMessageSave");
     let contact = await cacheableData.campaignContact.load(
       message.campaign_contact_id,
       { cacheOnly: true }

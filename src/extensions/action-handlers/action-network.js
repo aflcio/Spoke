@@ -1,10 +1,10 @@
-/* eslint no-console: 0 */
 /* eslint no-underscore-dangle: 0 */
 import moment from "moment";
 import util from "util";
 import { getConfig } from "../../server/api/lib/config";
 
 import httpRequest from "../../server/lib/http-request.js";
+import log from "../../server/log";
 
 export const setTimeoutPromise = util.promisify(setTimeout);
 
@@ -110,10 +110,11 @@ export async function processAction({ actionObject, contact, organization }) {
       );
     }
 
-    console.info(
-      "Sending updagte to Action Network",
-      JSON.stringify(postDetails)
-    );
+    log.info({
+      category: name,
+      event: 'processAction',
+      postDetails
+    }, "Sending updagte to Action Network");
 
     const url = makeUrl(path);
     await httpRequest(url, {
@@ -125,12 +126,9 @@ export async function processAction({ actionObject, contact, organization }) {
       },
       body: JSON.stringify(body)
     });
-  } catch (caught) {
-    console.error(
-      "Encountered exception in action-network.processAction",
-      caught
-    );
-    throw caught;
+  } catch (err) {
+    log.error({category: name, event: 'processAction', err});
+    throw err;
   }
 }
 
@@ -144,9 +142,9 @@ const getPage = async (item, page, organization) => {
       }
     })
       .then(async response => await response.json())
-      .catch(error => {
-        const message = `Error retrieving ${item} from ActionNetwork ${error}`;
-        console.error(message);
+      .catch(err => {
+        log.error({category: name, event: 'processAction', item, err}, `Error retrieving from ActionNetwork`);
+        const message = `Error retrieving ${item} from ActionNetwork ${err}`;
         throw new Error(message);
       });
 
@@ -155,11 +153,13 @@ const getPage = async (item, page, organization) => {
       page,
       pageResponse
     };
-  } catch (caughtError) {
-    console.error(
-      `Error loading ${item} page ${page} from ActionNetwork ${caughtError}`
-    );
-    throw caughtError;
+  } catch (err) {
+    log.error({
+      category: name,
+      event: 'processAction',
+      item, page, err
+    }, "Error loading page from ActionNetwork");
+    throw err;
   }
 };
 
@@ -226,8 +226,8 @@ export async function getClientChoiceData(organization) {
       });
       pageToDoStart = pageToDoEnd;
     }
-  } catch (caughtError) {
-    console.error(`Error loading choices from ActionNetwork ${caughtError}`);
+  } catch (err) {
+    log.error({category: name, event: 'getClientChoiceData', err}, "Error loading choices from ActionNetwork");
     return {
       data: `${JSON.stringify({
         error: "Failed to load choices from ActionNetwork"
@@ -291,7 +291,7 @@ export async function available(organization) {
   const result = !!getConfig(envVars.API_KEY, organization);
 
   if (!result) {
-    console.info(
+    log.info(
       "action-network action unavailable. Missing one or more required environment variables"
     );
   }

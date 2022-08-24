@@ -20,6 +20,7 @@ import { getServiceNameFromOrganization } from "../../service-vendors";
 import * as twilio from "../../service-vendors/twilio";
 import { camelizeKeys } from "humps";
 import usAreaCodes from "us-area-codes/data/codes.json";
+import log from "../../../server/log";
 
 export const name = "per-campaign-messageservices";
 
@@ -290,15 +291,19 @@ async function prepareTwilioCampaign(campaign, organization, trx) {
         allocated_to_id: campaign.id.toString()
       })
   ).map(row => row.service_id);
-  console.log(`Transferring ${phoneSids.length} numbers to ${msgSrvSid}`);
+  log.info({
+    category: name,
+    msgSrvSid,
+    numbers: phoneSids.length,
+  }, `Transferring ${phoneSids.length} numbers to ${msgSrvSid}`);
   try {
     await twilio.addNumbersToMessagingService(
       organization,
       phoneSids,
       msgSrvSid
     );
-  } catch (e) {
-    console.error("Failed to add numbers to messaging service", e);
+  } catch (err) {
+    log.error({category: name, err}, "Failed to add numbers to messaging service");
     if (msgSrvSid) {
       // only delete campaign message service
       await twilio.deleteMessagingService(organization, msgSrvSid);
@@ -347,11 +352,12 @@ export async function onCampaignStart({ organization, campaign, user }) {
         });
       await cacheableData.campaign.clear(campaign.id);
     });
-  } catch (e) {
-    console.error(
-      `per-campaign-messageservices failed to start campaign: ${e.message}`,
-      e
-    );
+  } catch (err) {
+    log.error({
+      category: name,
+      event: 'onCampaignStart',
+      err
+    }, "per-campaign-messageservices failed to start campaign");
     throw new Error(
       `per-campaign-messageservices failed to start create messageservice: ${e.message}`
     );

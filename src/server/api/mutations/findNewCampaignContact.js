@@ -1,4 +1,4 @@
-import { log } from "../../../lib";
+import log from "../../../server/log";
 import telemetry from "../../telemetry";
 import { r, cacheableData } from "../../models";
 import { assignmentRequiredOrAdminRole } from "../errors";

@@ -2,7 +2,7 @@ import Nexmo from "nexmo";
 import { getFormattedPhoneNumber } from "../../../lib/phone-format";
 import { Message, PendingMessagePart } from "../../../server/models";
 import { getLastMessage } from "../message-sending";
-import { log } from "../../../lib";
+import log from "../../../server/log";
 import wrap from "../../../server/wrap";
 
 // NEXMO error_codes:

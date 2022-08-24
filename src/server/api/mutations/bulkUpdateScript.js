@@ -3,18 +3,13 @@ import { accessRequired } from "../errors";
 import { r, cacheableData } from "../../models";
 import { getAllowed } from "../organization";
 import { replaceAll } from "../lib/utils";
+import log from "../../log";
 
 export const bulkUpdateScript = async (
   _,
   { organizationId, findAndReplace },
   { user }
 ) => {
-  console.log(
-    "1: about to access required ",
-    organizationId,
-    findAndReplace,
-    user
-  );
   await accessRequired(user, organizationId, "ADMIN");
   const scriptUpdatesResult = await r.knex.transaction(async trx => {
     const {
@@ -24,13 +19,13 @@ export const bulkUpdateScript = async (
       campaignTitlePrefixes,
       targetObject
     } = findAndReplace;
-    console.log(
-      "2: after access required ",
+    log.info({
+      category: 'bulkUpdateScript',
       searchString,
       replaceString,
       includeArchived,
       campaignTitlePrefixes
-    );
+    });
 
     // TODO: turn into subquery
     let campaignIdQuery = r

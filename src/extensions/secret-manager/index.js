@@ -1,3 +1,4 @@
+import log from "../../server/log";
 import { symmetricDecrypt } from "./crypto";
 
 const SECRET_MANAGER_NAME =
@@ -9,7 +10,10 @@ function getSetup(name) {
     const c = require(`./${name}/index.js`);
     return c;
   } catch (err) {
-    console.error("SECRET_MANAGER failed to load", name, err);
+    log.error({
+      category: 'extension',
+      err
+    }, `SECRET_MANAGER failed to load message handler ${name}`);
   }
 }
 

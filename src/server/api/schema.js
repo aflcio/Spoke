@@ -77,6 +77,7 @@ import {
 import { jobRunner } from "../../extensions/job-runners";
 import { Jobs } from "../../workers/job-processes";
 import { Tasks } from "../../workers/tasks";
+import log from "../log";
 
 const uuidv4 = require("uuid").v4;
 
@@ -290,7 +291,7 @@ async function editCampaign(id, campaign, loaders, user, origCampaignRecord) {
           ingest_success: null
         });
     } else {
-      console.error("ingestMethod unavailable", campaign.ingestMethod);
+      log.error({ingestMethod: campaign.ingestMethod}, "ingestMethod unavailable");
     }
   }
 
@@ -398,11 +399,12 @@ async function editCampaign(id, campaign, loaders, user, origCampaignRecord) {
     campaignUpdates.description.endsWith("..")
   ) {
     // some asynchronous cache-priming
-    console.log(
-      "force-loading loadCampaignCache",
+    log.info({
+      category: 'force-loading',
+      event: 'loadCampaignCache',
       campaignRefreshed,
       organization
-    );
+    })
     await jobRunner.dispatchTask(Tasks.CAMPAIGN_START_CACHE, {
       campaign: campaignRefreshed,
       organization
@@ -693,7 +695,11 @@ const rootMutations = {
             compress: false
           });
           res = await res.text();
-          console.log(res, email);
+          log.info({
+            event: 'resetUserPassword',
+            res,
+            email
+          });
           return res;
         } catch (err) {
           //handles error and sends it to the client
@@ -1156,7 +1162,7 @@ const rootMutations = {
         ? [{ campaignContactId }]
         : campaignIdsContactIds;
       // this is lazy but is not likely to be done in great bulk
-      console.log("editCampaignContactMessageStatus", contacts);
+      log.info({contacts}, "editCampaignContactMessageStatus");
       await Promise.all(
         contacts.map(async ({ campaignContactId }) => {
           const contact = await cacheableData.campaignContact.load(
@@ -1235,7 +1241,7 @@ const rootMutations = {
           updatedContacts[c.id] = c;
         });
       }
-      console.log("getAssignedContacts", contacts.length, updatedContacts);
+      log.info({updatedContacts, contacts: contacts.length}, "getAssignedContacts");
       const finalContacts = contacts
         .map(c => c && (updatedContacts[c.id] || c))
         .map(hasAssn);
@@ -1270,23 +1276,23 @@ const rootMutations = {
       );
       const campaign = await loaders.campaign.load(contact.campaign_id);
 
-      console.log(
-        "createOptOut",
+      log.info({
+        event: 'createOptOut',
         campaignContactId,
-        contact.campaign_id,
-        contact.assignment_id
-      );
+        campaignId: contact.campaign_id,
+        assignmentId: contact.assignment_id
+      });
       await assignmentRequiredOrAdminRole(
         user,
         campaign.organization_id,
         contact.assignment_id,
         contact
       );
-      console.log(
-        "createOptOut post access",
+      log.info({
+        event: 'createOptOut post access',
         campaignContactId,
-        contact.campaign_id
-      );
+        campaignId: contact.campaign_id
+      });
       const { assignmentId, reason } = optOut;
       const organization = await Organization.get(campaign.organization_id);
       await cacheableData.optOut.save({
@@ -1300,11 +1306,11 @@ const rootMutations = {
         user,
         organization
       });
-      console.log(
-        "createOptOut post save",
+      log.info({
+        event: 'createOptOut post save',
         campaignContactId,
-        contact.campaign_id
-      );
+        campaignId: contact.campaign_id
+      });
 
       const newContact = cacheableData.campaignContact.updateCacheForOptOut(
         contact
