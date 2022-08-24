@@ -82,7 +82,7 @@ class ScriptList extends React.Component {
         }}
         key={script.id}
       >
-        <ListItemText primary={script.title} secondary={script.text} />
+        <ListItemText primary={script.title.replace(/^(\+|\-)/, "")} secondary={script.text} />
         {currentCannedResponseScript &&
           currentCannedResponseScript.id === script.id && (
             <ListItemIcon>

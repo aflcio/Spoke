@@ -84,6 +84,25 @@ export const postCanvassResponse = async (contact, organization, bodyInput) => {
     body.canvassContext.phoneId = vanPhoneId;
   }
 
+  let statecode;
+  try {
+    statecode = JSON.parse(contact.custom_fields || "{}").statecode;
+  } catch (caughtException) {
+    // eslint-disable-next-line no-console
+    console.error(
+      `Error parsing custom_fields for contact ${contact.id} ${caughtException}`
+    );
+    return {};
+  }
+
+  if (!statecode) {
+    // eslint-disable-next-line no-console
+    console.error(
+      `Cannot sync results to van for campaign_contact ${contact.id}. No statecode in custom fields`
+    );
+    return {};
+  }
+
   const url = Van.makeUrl(`v4/people/${vanId}/canvassResponses`, organization);
 
   log.info({
@@ -98,7 +117,7 @@ export const postCanvassResponse = async (contact, organization, bodyInput) => {
     retries: 0,
     timeout: Van.getNgpVanTimeout(organization),
     headers: {
-      Authorization: await Van.getAuth(organization),
+      Authorization: await Van.getAuth(organization, statecode),
       "Content-Type": "application/json"
     },
     body: JSON.stringify(body),
