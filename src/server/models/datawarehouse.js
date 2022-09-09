@@ -29,6 +29,13 @@ if (WAREHOUSE_DB_TYPE) {
       ssl: useSSL
     }
   };
+  if (useSSL) {
+    config.connection.ssl = {
+      // Doesn't work without this due to proxy tunnel.
+      rejectUnauthorized: false,
+      sslmode: "require"
+    };
+  }
 }
 
 export default WAREHOUSE_DB_TYPE ? () => knex(config) : null;
