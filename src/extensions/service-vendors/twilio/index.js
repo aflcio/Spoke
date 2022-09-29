@@ -359,11 +359,15 @@ export async function sendMessage({
       // additionalMessageParams.mediaUrl = [];
     }
 
+    const statusCallback =
+      (serviceManagerData && serviceManagerData.status_callback_url) ||
+      process.env.TWILIO_STATUS_CALLBACK_URL;
+
     const messageParams = Object.assign(
       {
         to: message.contact_number,
         body: message.text,
-        statusCallback: process.env.TWILIO_STATUS_CALLBACK_URL
+        statusCallback
       },
       userNumber ? { from: userNumber } : {},
       messagingServiceSid ? { messagingServiceSid } : {},
@@ -817,9 +821,15 @@ async function buyNumber(
   opts = {},
   messageServiceSid
 ) {
+  const twilioBaseUrl =
+    getConfig("TWILIO_BASE_CALLBACK_URL", organization) ||
+    getConfig("BASE_URL");
   const response = await twilioInstance.incomingPhoneNumbers.create({
     phoneNumber,
     friendlyName: `Managed by Spoke [${process.env.BASE_URL}]: ${phoneNumber}`,
+    // smsUrl is also set on messaging service. set on the phone number as well
+    // so we can optionally use without messaging service.
+    smsUrl: urlJoin(twilioBaseUrl, "twilio", organization.id.toString()),
     voiceUrl: getConfig("TWILIO_VOICE_URL", organization) // will use default twilio recording if undefined
   });
 
