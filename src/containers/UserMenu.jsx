@@ -80,10 +80,6 @@ export class UserMenuBase extends Component {
     this.props.router.push(`/organizations`);
   };
 
-  handleOrgClick = id => {
-    this.props.router.push(`/admin/${id}`);
-  };
-
   renderAvatar(user) {
     return (
       <Avatar
@@ -151,7 +147,9 @@ export class UserMenuBase extends Component {
             {organizations.map(organization => (
               <MenuItem
                 key={organization.id}
-                onClick={() => this.handleOrgClick(organization.id)}
+                onClick={event => {
+                  this.handleMenuChange(event, organization.id);
+                }}
               >
                 {organization.name}
               </MenuItem>
