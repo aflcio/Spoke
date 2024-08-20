@@ -249,7 +249,7 @@ const messageCache = {
     // 3. Updates all the related caches
 
     let messageToSave = { ...messageInstance };
-    const handlers = getMessageHandlers();
+    const handlers = getMessageHandlers(organization);
     let newStatus = "needsResponse";
     let activeCellFound = null;
     let matchError = null;
