@@ -9,16 +9,21 @@ export const DEFAULT_NGP_VAN_DATABASE_MODE = 0;
 export const DEFAULT_NGPVAN_TIMEOUT = 32000;
 
 export default class Van {
-  static getAuth = async organization => {
+  static getAuth = async (organization, statecode) => {
+    let apiKeyName = "NGP_VAN_API_KEY";
+    if (statecode) {
+      apiKeyName = `${apiKeyName}_${statecode}`;
+    }
+
     const appName = getConfig("NGP_VAN_APP_NAME", organization);
-    const apiKey = hasConfig("NGP_VAN_API_KEY_ENCRYPTED", organization)
-      ? await getConfigDecrypt("NGP_VAN_API_KEY_ENCRYPTED", organization)
-      : getConfig("NGP_VAN_API_KEY", organization);
+    const apiKey = hasConfig(`${apiKeyName}_ENCRYPTED`, organization)
+      ? await getConfigDecrypt(`${apiKeyName}_ENCRYPTED`, organization)
+      : getConfig(apiKeyName, organization);
     const databaseMode = getConfig("NGP_VAN_DATABASE_MODE", organization);
 
     if (!appName || !apiKey) {
       throw new Error(
-        "Environment missing NGP_VAN_APP_NAME or NGP_VAN_API_KEY"
+        `Environment missing NGP_VAN_APP_NAME or ${apiKeyName}`
       );
     }
 
