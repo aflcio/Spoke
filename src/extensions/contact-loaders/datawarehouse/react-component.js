@@ -19,9 +19,6 @@ const innerStyles = {
   button: {
     margin: "24px 5px 24px 0",
     fontSize: "10px"
-  },
-  sqlBox: {
-    width: "100%"
   }
 };
 
@@ -179,9 +176,11 @@ export class CampaignContactsFormBase extends React.Component {
               as={GSTextField}
               id="contact-sql"
               name="contactSql"
-              type="textarea"
-              rows="5"
-              style={innerStyles.sqlBox}
+              label="SQL Query"
+              minRows={3}
+              fullWidth
+              multiline
+              variant="outlined"
             />
             <Button
               style={innerStyles.button}
