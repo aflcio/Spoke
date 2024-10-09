@@ -3,7 +3,7 @@ import React from "react";
 import Form from "react-formal";
 import { StyleSheet, css } from "aphrodite";
 import { GraphQLRequestError } from "../../network/errors";
-import { log } from "../../lib";
+import { log } from "../../lib/log-client";
 import withMuiTheme from "../../containers/hoc/withMuiTheme";
 
 class GSForm extends React.Component {

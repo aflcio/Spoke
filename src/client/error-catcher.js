@@ -1,4 +1,4 @@
-import { log } from "../lib";
+import { log } from "../lib/log-client";
 
 export default error => {
   if (!error) {
