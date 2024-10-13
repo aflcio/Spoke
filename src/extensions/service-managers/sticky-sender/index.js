@@ -7,6 +7,7 @@
 /// DO NOT IMPLEMENT ANYTHING YOU WILL NOT USE -- the existence of a function adds behavior/UI (sometimes costly)
 
 import { cacheableData } from "../../../server/models";
+import { log } from "../../../lib";
 
 export const name = "sticky-sender";
 
@@ -29,12 +30,14 @@ export async function onMessageSend({
   campaign,
   serviceManagerData
 }) {
-  console.log(
-    "sticky-sender.onMessageSend",
-    message.id,
-    message.user_number,
+  log.debug({
+    category: "numpicker",
+    picker: "sticky-sender",
+    event: "onMessageSend",
+    messageId: message.id,
+    userNumber: message.user_number,
     serviceManagerData
-  );
+  });
   if (
     message.user_number ||
     (serviceManagerData && serviceManagerData.user_number)

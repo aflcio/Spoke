@@ -2,8 +2,10 @@
 /// DO NOT IMPLEMENT ANYTHING YOU WILL NOT USE -- the existence of a function adds behavior/UI (sometimes costly)
 
 import { r, cacheableData } from "../../../server/models";
+import { log as logger } from "../../../lib";
 
 export const name = "numpicker-basic";
+const log = logger.child({category: "numpicker", picker: "basic"});
 
 export const metadata = () => ({
   // set canSpendMoney=true, if this extension can lead to (additional) money being spent
@@ -24,12 +26,14 @@ export async function onMessageSend({
   campaign,
   serviceManagerData
 }) {
-  console.log(
-    "numpicker-basic.onMessageSend",
-    message.id,
-    message.user_number,
+  log.debug({
+    event: 'onMessageSend',
+    orgId: organization.id,
+    campaignId: campaign.id,
+    messageId: message.id,
+    userNumber: message.user_number,
     serviceManagerData
-  );
+  });
   if (
     message.user_number ||
     (serviceManagerData && serviceManagerData.user_number)
@@ -48,17 +52,17 @@ export async function onMessageSend({
     .orderByRaw("random()")
     .select("phone_number")
     .first();
-  console.log("numpicker-basic.onMessageSend selectedPhone", selectedPhone);
+    log.info({event: 'onMessageSend', selectedPhone});
   // TODO: caching
   // TODO: something better than pure rotation -- maybe with caching we use metrics
   //   based on sad deliveryreports
   if (selectedPhone && selectedPhone.phone_number) {
     return { user_number: selectedPhone.phone_number };
   } else {
-    console.log(
-      "numpicker-basic.onMessageSend none found",
+    log.warn({
+      event: 'onMessageSend',
       serviceName,
-      organization.id
-    );
+      orgId: organization.id,
+    }, "None found");
   }
 }

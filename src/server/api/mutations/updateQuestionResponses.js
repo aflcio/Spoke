@@ -145,11 +145,12 @@ export const updateQuestionResponses = async (
   const questionResponsesStatus = await cacheableData.questionResponse
     .save(campaignContactId, questionResponses)
     .catch(err => {
-      log.error(
-        `Error saving updated QuestionResponse for campaignContactID ${campaignContactId} questionResponses ${JSON.stringify(
-          questionResponses
-        )} error ${err}`
-      );
+      log.error({
+        event: "updateQuestionResponses",
+        contactId: campaignContactId,
+        questionResponses,
+        err
+      });
     });
 
   try {
@@ -161,7 +162,7 @@ export const updateQuestionResponses = async (
       questionResponsesStatus
     });
   } catch (e) {
-    console.error("Dispatching to one or more action handlers failed", e);
+    log.error(e, "Dispatching to one or more action handlers failed");
   }
 
   return contact.id;

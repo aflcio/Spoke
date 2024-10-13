@@ -1,3 +1,4 @@
+import { log } from "../../lib";
 import { getConfig } from "../../server/api/lib/config";
 import { r } from "../../server/models";
 
@@ -130,7 +131,12 @@ function getIngestMethods() {
       const c = require(`./${name}/index.js`);
       ingestMethods[name] = c;
     } catch (err) {
-      console.error("CONTACT_LOADERS failed to load ingestMethod", name, err);
+      log.error({
+        category: 'cotact-loaders',
+        event: 'getIngestMethods',
+        name,
+        err
+      }, "CONTACT_LOADERS failed to load ingestMethod");
     }
   });
   return ingestMethods;

@@ -7,6 +7,7 @@ database, using the SESSION_SECRET environment variable as the encryption key.
 */
 
 const crypto = require("crypto-browserify");
+const { log } = require("../../lib/log");
 
 const secret = process.env.SESSION_SECRET || global.SESSION_SECRET;
 const algorithm = "aes-256-cbc";
@@ -15,8 +16,7 @@ const algorithm = "aes-256-cbc";
 // 32 characters because in the default development environment it is shorter.
 // In production environments the SESSION_SECRET should be a long random sring.
 if (secret && secret.length < 32) {
-  // eslint-disable-next-line no-console
-  console.warn(
+  log.warn(
     "Using short (insecure) SESSION_SECRET. Fine for testing, bad for production."
   );
 }

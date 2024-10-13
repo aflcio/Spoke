@@ -24,7 +24,7 @@ export const bulkSendMessages = async (
     !getConfig("ALLOW_SEND_ALL") ||
     !getConfig("ALLOW_SEND_ALL_ENABLED", organization)
   ) {
-    log.error("Not allowed to send all messages at once");
+    log.error({event: "bulkSendMessages"}, "Not allowed to send all messages at once");
     throw new GraphQLError("Not allowed to send all messages at once");
   }
 

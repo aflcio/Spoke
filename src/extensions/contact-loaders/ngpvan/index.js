@@ -4,8 +4,10 @@ import { parseCSVAsync } from "../../../workers/parse_csv";
 import { failedContactLoad } from "../../../workers/jobs";
 import HttpRequest from "../../../server/lib/http-request.js";
 import Van from "./util";
+import { log as logger } from "../../../lib/log.js";
 
 export const name = "ngpvan";
+const log = logger.child({category: 'cotact-loaders', loader: name});
 
 export const DEFAULT_NGP_VAN_MAXIMUM_LIST_SIZE = 75000;
 export const DEFAULT_NGP_VAN_CACHE_TTL = 300;
@@ -40,8 +42,7 @@ export const handleFailedContactLoad = async (
   ingestDataReference,
   message
 ) => {
-  // eslint-disable-next-line no-console
-  console.error(message);
+  log.error(message);
   await failedContactLoad(job, null, JSON.stringify(ingestDataReference), {
     errors: [message],
     ...ingestDataReference
@@ -56,7 +57,7 @@ export async function available(organization, user) {
   // / If this is instantaneous, you can have it be 0 (i.e. always), but if it takes time
   // / to e.g. verify credentials or test server availability,
   // / then it's better to allow the result to be cached
- 
+
   const hasRawKey = hasConfig("NGP_VAN_API_KEY", organization);
   const hasEncryptedKey = hasConfig("NGP_VAN_API_KEY_ENCRYPTED", organization)
   const hasAppName = hasConfig("NGP_VAN_APP_NAME", organization);
@@ -65,15 +66,20 @@ export async function available(organization, user) {
   const result = (hasRawKey || hasEncryptedKey) && hasAppName && hasWebhook;
 
   if (!result) {
-    console.log(
-      `${organization.name} :: ngpvan contact loader unavailable. Status:\n
-      Needs one:\n
-      \tNGP_VAN_API_KEY: ${hasRawKey}\n
-      \tNGP_VAN_API_KEY_ENCRYPTED: ${hasEncryptedKey}\n
-      Needs both:\n
-      \tNGP_VAN_APP_NAME: ${hasAppName}\n
-      \tNGP_VAN_WEBHOOK_BASE_URL: ${hasWebhook}`
-    );
+    log.warn({
+      orgId: organization.id,
+      orgName: organization.name,
+      config: {
+        needsOne: {
+          NGP_VAN_API_KEY: hasRawKey,
+          NGP_VAN_API_KEY_ENCRYPTED: hasEncryptedKey,
+        },
+        needsBoth: {
+          NGP_VAN_APP_NAME: hasAppName,
+          NGP_VAN_WEBHOOK_BASE_URL: hasWebhook,
+        },
+      },
+    }, 'ngpvan contact loader unavailable. Missing one or more required environment variables');
   }
 
   return {
@@ -91,12 +97,11 @@ export function addServerEndpoints(expressApp) {
     "/integration/ngpvan/ingest/:jobId/:maxContacts/:vanListId",
     function(req, res) {
       const { jobId, maxContacts, vanListId } = req.params;
-      console.log(
-        "Received callback from VAN with parameters: jobId, maxContacts, vanListId",
+      log.info({
         jobId,
         maxContacts,
         vanListId
-      );
+      }, "Received callback from VAN with parameters: jobId, maxContacts, vanListId");
       res.send("OK");
     }
   );
@@ -151,10 +156,14 @@ export async function getClientChoiceData(organization, campaign, user) {
         );
       }
     }
-  } catch (error) {
-    const message = `${organization.name} :: Error retrieving saved list metadata from VAN ${error}`;
-    // eslint-disable-next-line no-console
-    console.log(message);
+  } catch (err) {
+    const message = `${organization.name} :: Error retrieving saved list metadata from VAN ${err}`;
+    log.error({
+      event: 'getClientChoiceData',
+      orgId: organization.id,
+      orgName: organization.name,
+      err,
+    }, 'Error retrieving saved list metadata from VAN');
     return { data: `${JSON.stringify({ error: message })}` };
   }
 

@@ -97,7 +97,7 @@ export function addServerEndpoints(addPostRoute) {
               // FUTURE: turn into tasks to avoid timeout issues
               await webhooks[payload.type](payload, req.params);
             } catch (err) {
-              log.error(err);
+              log.error({category: 'bandwidth', event: 'addServerEndpoints', err});
             }
           }
         }

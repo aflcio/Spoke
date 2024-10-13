@@ -44,13 +44,13 @@ const sender =
     : nodemailer.createTransport(nodeMailerConfig);
 
 export const sendEmail = async ({ to, subject, text, html, replyTo }) => {
-  log.info(`Sending e-mail to ${to} with subject ${subject}.`);
+  log.info({event: 'sendEmail', to, subject}, `Sending e-mail to ${to}`);
 
   if (
     process.env.NODE_ENV === "development" ||
     (!getConfig("EMAIL_FROM") && process.env.NODE_ENV === "test")
   ) {
-    log.debug(`Would send e-mail with subject ${subject} and text ${text}.`);
+    log.debug({event: 'sendEmail', to, subject, text}, `Would send e-mail`);
     return null;
   }
 

@@ -30,7 +30,6 @@ export const loadToCache = async campaignContactId => {
 
 export const tagCampaignContactCache = {
   query: async ({ campaignContactId, minimalObj, includeResolved }) => {
-    // console.log('query tag cache', campaignContactId)
     // For now, minimalObj is always being invoked as true in
     // server/api/campaign-contact
     if (r.redis && CONTACT_CACHE_ENABLED && minimalObj) {

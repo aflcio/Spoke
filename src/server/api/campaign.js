@@ -18,6 +18,7 @@ import ownedPhoneNumber from "./lib/owned-phone-number";
 const title = 'lower("campaign"."title")';
 import { camelizeKeys } from "humps";
 import usAreaCodes from "us-area-codes/data/codes.json";
+import { log } from "../../lib";
 
 export function addCampaignsFilterToQuery(
   queryParam,
@@ -566,7 +567,7 @@ export const resolvers = {
             }
           }
         } catch (err) {
-          console.log("Corrupted TexterFeedback JSON", err);
+          log.error(err, "Corrupted TexterFeedback JSON");
         }
       }
 

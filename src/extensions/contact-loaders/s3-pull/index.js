@@ -7,13 +7,14 @@ import {
 import { r } from "../../../server/models";
 import { getConfig, hasConfig } from "../../../server/api/lib/config";
 import { getFormattedPhoneNumber } from "../../../lib/phone-format.js";
-import { log, gunzip } from "../../../lib";
+import { log as logger, gunzip } from "../../../lib";
 
 import path from "path";
 import Papa from "papaparse";
 import { S3 } from "@aws-sdk/client-s3";
 
 export const name = "s3-pull";
+const log = logger.child({category: 'cotact-loaders', loader: name});
 
 export function displayName() {
   return "S3 CSV Pull";
@@ -89,6 +90,11 @@ export async function loadContactS3PullProcessFile(jobEvent, contextVars) {
     customIndexes,
     region
   } = jobEvent;
+  const pullLog = log.child({
+    event: 's3pull',
+    orgId: jobEvent.orgId,
+    campaignId: campaign_id,
+  });
   const s3 = new S3({
     region,
 
@@ -122,11 +128,11 @@ export async function loadContactS3PullProcessFile(jobEvent, contextVars) {
       skipEmptyLines: true,
       escapeChar: "\\",
       error: (err, file, inputElem, reason) => {
-        console.log("s3pull ERROR", err, reason);
+        pullLog.error({reason, err});
         resolve({ errors: [err] });
       },
       complete: ({ data, errors, meta }) => {
-        console.log("s3pull data", data.length, errors, meta);
+        pullLog.info({length: data.length, errors, meta});
         resolve({ data, errors });
       }
     });
@@ -182,15 +188,12 @@ export async function loadContactS3PullProcessFile(jobEvent, contextVars) {
       .select("status")
       .first();
     if (!jobCompleted) {
-      console.log(
-        "loadContactS3PullProcessFile job no longer exists",
-        jobEvent
-      );
+      pullLog.info({ jobEvent }, "loadContactS3PullProcessFile job no longer exists");
       return { alreadyComplete: 1 };
     }
 
-    await r.knex.batchInsert("campaign_contact", insertRows).catch(e => {
-      console.error("Error with S3 pull batch insertion for campaign", campaign_id, e);
+    await r.knex.batchInsert("campaign_contact", insertRows).catch(err => {
+      pullLog.error(err, "Error with S3 pull batch insertion for campaign");
     });
   }
 
@@ -209,10 +212,7 @@ export async function loadContactS3PullProcessFile(jobEvent, contextVars) {
       command: "loadContactS3PullProcessFileJob"
     };
     if (process.env.WAREHOUSE_DB_LAMBDA_ITERATION) {
-      console.log(
-        "SENDING TO LAMBDA loadContactS3PullProcessFileJob",
-        newJobEvent
-      );
+      pullLog.info({ newJobEvent }, "SENDING TO LAMBDA loadContactS3PullProcessFileJob");
       await sendJobToAWSLambda(newJobEvent);
       return { invokedAgain: 1 };
     } else {
@@ -228,9 +228,7 @@ export async function loadContactS3PullProcessFile(jobEvent, contextVars) {
       .andWhere("campaign_id", campaign_id)
       .delete()
       .then(result => {
-        console.log(
-          `loadContactS3PullProcessFile # of contacts with invalid cells removed from DW query (${campaign_id}): ${result}`
-        );
+        pullLog({ result }, "# of contacts with invalid cells removed from DW query");
         validationStats.invalidCellCount = result;
       });
     if (process.env.WAREHOUSE_DB_LAMBDA_ITERATION) {
@@ -255,7 +253,7 @@ export async function loadContactS3PullProcessFile(jobEvent, contextVars) {
 }
 
 export async function processContactLoad(job, maxContacts, organization) {
-  console.log("STARTING s3-pull load", job.id, job.payload);
+  log.info({jobId: job.id, payload: job.payload}, "STARTING s3-pull load");
   const jobMessages = [];
   const s3Path = JSON.parse(job.payload).s3Path;
   const s3Bucket = getConfig("AWS_S3_BUCKET_NAME", organization);
@@ -271,7 +269,7 @@ export async function processContactLoad(job, maxContacts, organization) {
   const manifestPath = s3Path.endsWith("manifest")
     ? s3Path
     : path.join(s3Path, "manifest");
-  console.log("s3-pull manifest path: ", manifestPath.replace(/^\//, ""));
+  log.debug({path: manifestPath.replace(/^\//, "")}, "s3-pull manifest path: ");
   let manifestData;
   try {
     const manifestFile = await s3
@@ -292,7 +290,7 @@ export async function processContactLoad(job, maxContacts, organization) {
     );
     return;
   }
-  console.log("s3-pull manifest found", manifestData);
+  log.info({ manifestData }, "s3-pull manifest found");
   // 1. check manifestData.schema -- if not demand "MANIFEST VERBOSE"
   if (!manifestData.schema || !manifestData.schema.elements) {
     await failedContactLoad(

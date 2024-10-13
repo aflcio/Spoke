@@ -7,6 +7,9 @@ import userCache from "./user";
 import organizationCache from "./organization";
 import { modelWithExtraProps } from "./lib";
 import { Writable } from "stream";
+import { log as logger } from "../../../lib";
+
+const log = logger.child({category: 'camapign-contact-cache'});
 
 // <campaignContactId>
 //   - assignmentId
@@ -215,7 +218,7 @@ const campaignContactCache = {
     if (r.redis && CONTACT_CACHE_ENABLED) {
       const cacheRecord = await r.redis.get(cacheKey(id));
       if (cacheRecord) {
-        // console.log('contact cacheRecord', cacheRecord)
+        log.debug({cacheRecord}, 'contact cacheRecord');
         const cacheData = JSON.parse(cacheRecord);
         if (cacheData.cell && cacheData.organization_id) {
           cacheData.is_opted_out = await optOutCache.query({
@@ -267,7 +270,7 @@ const campaignContactCache = {
     ) {
       return;
     }
-    console.log("campaign-contact loadMany", campaign.id);
+    log.info({event: "loadMany", campaignId: campaign.id});
     // 1. load the data
     let query = r
       .knex("campaign_contact")
@@ -309,7 +312,7 @@ const campaignContactCache = {
       cacheSaver._write = (dbRecord, enc, next) => {
         // Note: non-async land
         if (dbRecord.id % 1000 === 0) {
-          console.log("contact loadMany contacts", campaign.id, dbRecord.id);
+          log.info({event: "loadMany", campaignId: campaign.id, dbRecordId: dbRecord.id});
         }
         saveCacheRecord(
           dbRecord,
@@ -333,7 +336,7 @@ const campaignContactCache = {
             next();
           },
           err => {
-            console.error("FAILED CONTACT CACHE SAVE", err);
+            log.error(err, "FAILED CONTACT CACHE SAVE");
             stream.end();
             next();
           }
@@ -351,7 +354,7 @@ const campaignContactCache = {
         organizationId: String((organization && organization.id) || "")
       });
     }
-    console.log("contact loadMany finish stream", campaign.id);
+    log.info({event: "loadMany", campaignId: campaign.id}, "finish stream");
   },
   orgId: async contact =>
     contact.organization_id ||
@@ -375,7 +378,7 @@ const campaignContactCache = {
       const cellData = await r.redis.get(
         cellTargetKey(cell, messageServiceSid || userNumber)
       );
-      // console.log('lookupByCell cache', cell, service, messageServiceSid, cellData)
+      log.debug({event: 'lookupByCell cache', cell, service, messageServiceSid, cellData});
       if (cellData) {
         const [
           campaign_contact_id, // eslint-disable-line camelcase
@@ -464,7 +467,7 @@ const campaignContactCache = {
       await campaignCache.updateAssignedCount(campaignId);
     }
     if (r.redis && CONTACT_CACHE_ENABLED) {
-      // console.log("updateCampaignAssignmentCache", campaignId, contactIds);
+      log.debug({event: "updateCampaignAssignmentCache", campaignId, contactIds});
       // We do NOT delete current cache as mostly people are re-assigned.
       // When people are zero-d out, then the assignments themselves are deleted
       // await r.redis.DEL(assignmentKey);
@@ -482,7 +485,7 @@ const campaignContactCache = {
         setCacheContactAssignment(dbRecord.id, campaignId, dbRecord)
       );
       const data = await Promise.all(promises);
-      // console.log("updateCampaignAssignmentCache", data[0], data.length);
+      log.debug({event: "updateCampaignAssignmentCache", daata: data[0], length: data.length});
     }
   },
   updateStatus: async (
@@ -491,7 +494,7 @@ const campaignContactCache = {
     messageServiceOrUserNumber,
     moreUpdates
   ) => {
-    // console.log('updateSTATUS', newStatus, contact)
+    log.debug({event: 'updateSTATUS', newStatus, contact})
     try {
       const assignmentIds = (
         await r
@@ -506,7 +509,6 @@ const campaignContactCache = {
       ).map(row => {
         return row.assignment_id;
       });
-      // console.log('contact.updateStatus assignmentIds', assignmentIds);
       if (
         r.redis &&
         assignmentIds &&
@@ -561,7 +563,7 @@ const campaignContactCache = {
         // await updateAssignmentContact(contact, newStatus);
       }
     } catch (err) {
-      console.log("contact updateStatus Error", newStatus, contact, err);
+      log.error({event: "updateStatus", newStatus, contact, err});
     }
   },
   updateCustomFields: async (contact, customFields, campaign, organization) => {
@@ -622,13 +624,7 @@ const campaignContactCache = {
 
       return updatedContact;
     } catch (err) {
-      // eslint-disable-next-line no-console
-      return console.log(
-        "contact updateCustomFields Error",
-        customFields,
-        contact,
-        err
-      );
+      log.error({event: "updateCustomFields", customFields, contact, err});
     }
     /* eslint-enable no-param-reassign */
   }

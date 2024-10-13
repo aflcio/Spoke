@@ -1,5 +1,6 @@
 import optOutMessageCache from "../../models/cacheable_queries/opt-out-message";
 import zipStateCache from "../../models/cacheable_queries/zip";
+import { log } from "../../../lib";
 
 export const getOptOutMessage = async (
   _,
@@ -12,8 +13,8 @@ export const getOptOutMessage = async (
     });
 
     return queryResult || defaultMessage;
-  } catch (e) {
-    console.error(e);
+  } catch (err) {
+    log.error({category: "mutations", event: "getOptOutMessage", err})
     return defaultMessage;
   }
 };

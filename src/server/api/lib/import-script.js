@@ -6,6 +6,7 @@ import { compose, map, reduce, getOr, find, filter, has } from "lodash/fp";
 import { r, cacheableData } from "../../models";
 import { getConfig } from "./config";
 import { base64ToString } from "./utils";
+import { log } from "../../../lib";
 
 const textRegex = RegExp(".*[A-Za-z0-9]+.*");
 
@@ -39,7 +40,7 @@ const getDocument = async documentId => {
       documentId
     });
   } catch (err) {
-    console.log(err);
+    log.error({category: "import-script", event: "getDocument", err});
     throw new Error(err.message);
   }
   return result;
@@ -327,7 +328,7 @@ const replaceInteractionsInDatabase = async (
         null
       );
     } catch (exception) {
-      console.log(exception);
+      log.error({category: "import-script", event: "replaceInteractionsInDatabase", err: exception});
       throw exception;
     }
   });
@@ -476,7 +477,8 @@ const importScriptFromDocument = async (campaignId, scriptUrl) => {
   try {
     result = await getDocument(documentId);
   } catch (err) {
-    console.error("ImportScript Failed", err);
+    log.error({category: "import-script", event: "importScriptFromDocument", err});
+
     throw new Error(
       `Retrieving Google doc failed due to access, secret config, or invalid google url`
     );

@@ -9,13 +9,16 @@ import { r } from "../../../server/models";
 import { getConfig } from "../../../server/api/lib/config";
 import { getSecret, convertSecret } from "../../secret-manager";
 import { getMessageServiceConfig } from "../service_map";
+import { log as logger } from "../../../lib";
+
+const log = logger.child({ category: "bandwidth" });
 
 export async function getNumbersClient(organization, options) {
   let config;
   let password;
   if (options && options.serviceConfig) {
     config = options.serviceConfig;
-    console.log("bandwidth.getNumbersClient.serviceConfig", config);
+    log.debug({event: "getNumbersClient", orgId: organization.id, config});
     password = await getSecret(
       "bandwidthPassword",
       config.password,
@@ -25,11 +28,12 @@ export async function getNumbersClient(organization, options) {
     config = await getMessageServiceConfig("bandwidth", organization, {
       obscureSensitiveInformation: false
     });
-    console.log(
-      "bandwidth.getNumbersClient.getMessageServiceConfig",
-      config.userName,
-      config.accountId
-    );
+    log.debug({
+      event: "getNumbersClient",
+      orgId: organization.id,
+      userName: config.userName,
+      accountId: config.accountId
+    });
     password = config.password;
   }
 
@@ -106,7 +110,6 @@ export async function fullyConfigured(organization) {
 }
 
 export async function updateConfig(oldConfig, config, organization) {
-  // console.log('bandwidth.updateConfig', oldConfig, config, organization);
   let changes = { ...config };
   if (config.password) {
     changes.password = await convertSecret(
@@ -119,7 +122,6 @@ export async function updateConfig(oldConfig, config, organization) {
     ...oldConfig,
     ...changes
   };
-  // console.log('bandwdith finalConfig', finalConfig);
 
   try {
     if (
@@ -150,13 +152,7 @@ export async function updateConfig(oldConfig, config, organization) {
       });
     }
   } catch (err) {
-    console.log(
-      "bandwidth.updateConfig autoconfigure Error",
-      err.message,
-      err.response && err.response.text,
-      "xxxx",
-      err
-    );
+    log.error({event: "updateConfig", err})
     finalConfig.autoConfigError = `Auto-configuration failed. ${err.message ||
       ""} ${(err.response && err.response.text) || ""}`;
   }
@@ -183,7 +179,7 @@ export async function buyNumbersInAreaCode(
       tollFreeWildCardPattern: "8**"
     });
     orderId = order.id;
-    console.log("bandwidth order details", JSON.stringify(order));
+    log.info({event: "buyNumbersInAreaCode", orgId: organization.id, order});
   }
   if (orderId) {
     let result;
@@ -225,7 +221,7 @@ export async function syncAccountNumbers(organization, options) {
   );
   const telephoneNumbers = await sipPeer.getTnsAsync();
   // [ { fullNumber: '2135551234' }, .... ]
-  console.log("syncAccountNumbers", telephoneNumbers.length);
+  log.info({event: "syncAccountNumbers", orgId: organization.id, count: telephoneNumbers.length});
   if (telephoneNumbers.length) {
     const nums = telephoneNumbers.map(tn => `+1${tn.fullNumber}`);
     const existingNums = await r
@@ -237,7 +233,7 @@ export async function syncAccountNumbers(organization, options) {
       ? nums.filter(e => existingNums.indexOf(e) == -1)
       : nums;
     if (newNums.length) {
-      console.log("Bandwidth, new numbers to load", newNums.length, newNums[0]);
+      log.info({event: "syncAccountNumbers", orgId: organization.id, count: newNums.length, newNums});
       const newNumbers = newNums.map(tn => ({
         organization_id: organization.id,
         area_code: tn.slice(2, 5),
@@ -364,7 +360,7 @@ export async function createMessagingService(
       }
     }
   );
-  console.log("bandwidth createMessagingService", JSON.stringify(application));
+  log.info({event: "createMessagingService", orgId: organization.id, application});
   // 2. assign application to subaccount|site and location|sippeer
   const location = await BandwidthNumbers.SipPeer.getAsync(
     client,

@@ -1,4 +1,5 @@
 import { getConfig } from "../../server/api/lib/config";
+import { log } from "../../lib";
 
 export function getMessageHandlers(organization) {
   const handlerKey = "MESSAGE_HANDLERS";
@@ -16,9 +17,13 @@ export function getMessageHandlers(organization) {
       const c = require(`./${name}/index.js`);
       handlers.push(c);
     } catch (err) {
-      console.error(
-        `${handlerKey} failed to load message handler ${name} -- ${err}`
-      );
+      log.error({
+        category: 'message-handlers',
+        orgId: organization.id,
+        handlerKey,
+        name,
+        err
+      }, "failed to load message handler");
     }
   });
   return handlers;
