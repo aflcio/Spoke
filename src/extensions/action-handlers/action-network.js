@@ -1,14 +1,15 @@
-/* eslint no-console: 0 */
 /* eslint no-underscore-dangle: 0 */
 import moment from "moment";
 import util from "util";
 import { getConfig } from "../../server/api/lib/config";
+import { log as logger } from "../../lib";
 
 import httpRequest from "../../server/lib/http-request.js";
 
 export const setTimeoutPromise = util.promisify(setTimeout);
 
 export const name = "action-network";
+const log = logger.child({category: 'action-network'});
 
 // What the user sees as the option
 export const displayName = () => "Action Network";
@@ -110,10 +111,11 @@ export async function processAction({ actionObject, contact, organization }) {
       );
     }
 
-    console.info(
-      "Sending updagte to Action Network",
-      JSON.stringify(postDetails)
-    );
+    log.info({
+      event: 'processAction',
+      orgId: organization.id,
+      postDetails
+    }, "Sending updagte to Action Network");
 
     const url = makeUrl(path);
     await httpRequest(url, {
@@ -125,12 +127,13 @@ export async function processAction({ actionObject, contact, organization }) {
       },
       body: JSON.stringify(body)
     });
-  } catch (caught) {
-    console.error(
-      "Encountered exception in action-network.processAction",
-      caught
-    );
-    throw caught;
+  } catch (err) {
+    log.error({
+      event: 'processAction',
+      orgId: organization.id,
+      err
+    });
+    throw err;
   }
 }
 
@@ -155,11 +158,15 @@ const getPage = async (item, page, organization) => {
       page,
       pageResponse
     };
-  } catch (caughtError) {
-    console.error(
-      `Error loading ${item} page ${page} from ActionNetwork ${caughtError}`
-    );
-    throw caughtError;
+  } catch (err) {
+    log.error({
+      event: 'getPage',
+      orgId: organization.id,
+      item,
+      page,
+      err,
+    });
+    throw err;
   }
 };
 
@@ -226,8 +233,12 @@ export async function getClientChoiceData(organization) {
       });
       pageToDoStart = pageToDoEnd;
     }
-  } catch (caughtError) {
-    console.error(`Error loading choices from ActionNetwork ${caughtError}`);
+  } catch (err) {
+    log.error({
+      event: 'getClientChoiceData',
+      orgId: organization.id,
+      err,
+    }, "Error loading choices from ActionNetwork");
     return {
       data: `${JSON.stringify({
         error: "Failed to load choices from ActionNetwork"
@@ -291,7 +302,7 @@ export async function available(organization) {
   const result = !!getConfig(envVars.API_KEY, organization);
 
   if (!result) {
-    console.info(
+    log.info(
       "action-network action unavailable. Missing one or more required environment variables"
     );
   }

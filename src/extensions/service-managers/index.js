@@ -1,4 +1,5 @@
 import { getConfig } from "../../server/api/lib/config";
+import { log } from "../../lib";
 
 export function getServiceManagers(organization) {
   const handlerKey = "SERVICE_MANAGERS";
@@ -36,9 +37,12 @@ export function getServiceManagers(organization) {
       const c = require(`./${name}/index.js`);
       handlers.push(c);
     } catch (err) {
-      console.error(
-        `${handlerKey} failed to load service manager ${name} -- ${err}`
-      );
+      log.error({
+        category: 'service-managers',
+        handlerKey,
+        name,
+        err
+      }, "Failed to load service manager");
     }
   });
   return handlers;

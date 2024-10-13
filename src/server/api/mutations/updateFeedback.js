@@ -1,5 +1,6 @@
 import { r, cacheableData } from "../../models";
 import { assignmentRequiredOrAdminRole } from "../errors";
+import { log } from "../../../lib";
 
 export const updateFeedback = async (
   _,
@@ -54,10 +55,7 @@ export const updateFeedback = async (
     }
     return { id: assignmentId, feedback };
   } catch (err) {
-    // eslint-disable-next-line no-console
-    console.error(
-      `Error saving assignment texter feedback for assignmentId ${assignmentId}`
-    );
+    log.error({category: "mutations", event: "updateFeedback", assignmentId, err}, "Error saving assignment texter feedback");
     throw err;
   }
 };

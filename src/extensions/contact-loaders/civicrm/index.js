@@ -3,7 +3,7 @@
 import { completeContactLoad } from "../../../workers/jobs";
 import { r } from "../../../server/models";
 import { getConfig, hasConfig } from "../../../server/api/lib/config";
-import { log } from "../../../lib/log";
+import { log as logger } from "../../../lib/log";
 import { searchGroups, getGroupMembers, getCustomFields } from "./util";
 import {
   CIVICRM_INTEGRATION_GROUPSEARCH_ENDPOINT,
@@ -18,6 +18,7 @@ import { getFormattedPhoneNumber } from "../../../lib";
 // Some enviornmental variables are mandatory; others are optional.
 
 export const name = CIVICRM_CONTACT_LOADER;
+const log = logger.child({category: 'cotact-loaders', loader: 'civicrm'});
 
 export function displayName() {
   return "CiviCRM";

@@ -2,6 +2,7 @@ import { getConfig, getFeatures } from "../../../server/api/lib/config";
 import { cacheableData } from "../../../server/models";
 import { getOptOutMessage } from "../../../server/api/mutations";
 import { sendRawMessage } from "../../../server/api/mutations/sendMessage";
+import { log } from "../../../lib";
 
 const DEFAULT_AUTO_OPTOUT_REGEX_LIST_BASE64 =
   "W3sicmVnZXgiOiAiXlxccypzdG9wXFxifFxcYnJlbW92ZSBtZVxccyokfHJlbW92ZSBteSBuYW1lfFxcYnRha2UgbWUgb2ZmIHRoXFx3KyBsaXN0fFxcYmxvc2UgbXkgbnVtYmVyfGRvblxcVz90IGNvbnRhY3QgbWV8ZGVsZXRlIG15IG51bWJlcnxJIG9wdCBvdXR8c3RvcDJxdWl0fHN0b3BhbGx8Xlxccyp1bnN1YnNjcmliZVxccyokfF5cXHMqY2FuY2VsXFxzKiR8XlxccyplbmRcXHMqJHxeXFxzKnF1aXRcXHMqJCIsICJyZWFzb24iOiAic3RvcCJ9XQ==";
@@ -10,7 +11,7 @@ const DEFAULT_AUTO_OPTOUT_REGEX_LIST_BASE64 =
 
 // [{"regex": "^\\s*stop\\b|\\bremove me\\s*$|remove my name|\\btake me off th\\w+ list|
 // \\blose my number|don\\W?t contact me|delete my number|I opt out|stop2quit|stopall|
-// ^\\s*unsubscribe\\s*$|^\\s*cancel\\s*$|^\\s*end\\s*$|^\\s*quit\\s*$", 
+// ^\\s*unsubscribe\\s*$|^\\s*cancel\\s*$|^\\s*end\\s*$|^\\s*quit\\s*$",
 // "reason": "stop"}]
 
 export const serverAdministratorInstructions = () => {
@@ -43,15 +44,12 @@ export const available = organization => {
     JSON.parse(Buffer.from(conf, "base64").toString());
     return true;
   } catch (e) {
-    console.log(
-      "message-handler/auto-optout JSON parse of AUTO_OPTOUT_REGEX_LIST_BASE64 failed",
-      e
-    );
+    log.error(e, "message-handler/auto-optout JSON parse of AUTO_OPTOUT_REGEX_LIST_BASE64 failed");
     return false;
   }
 };
 
-// Part of the auto-opt out process. 
+// Part of the auto-opt out process.
 // checks if message recieved states something like "stop", "quit", or "stop2quit"
 export const preMessageSave = async ({ messageToSave, organization }) => {
   if (messageToSave.is_from_contact) {  // checks if message is from the contact
@@ -67,13 +65,15 @@ export const preMessageSave = async ({ messageToSave, organization }) => {
       return String(messageToSave.text).match(re);
     });
     if (matches.length) {  // if more than one match, opt-out
-      console.log(
-        "auto-optout MATCH",
-        `| campaign_contact_id: ${messageToSave.campaign_contact_id}`,
-        `| reason: "${matches[0].reason}"`
-      );
       const reason = matches[0].reason || "auto_optout"; // with default opt-out regex,
                                                          // reason will always be "stop"
+      log.info({
+        category: 'auto-optout',
+        event: 'preMessageSave',
+        orgId: organization.id,
+        contactId: messageToSave.campaign_contact_id,
+        reason,
+      }, "auto-optout MATCH");
       messageToSave.error_code = -133;
       return {
         contactUpdates: {
@@ -98,11 +98,13 @@ export const postMessageSave = async ({
   campaign
 }) => {
   if (message.is_from_contact && handlerContext.autoOptOutReason) {
-    console.log(
-      "auto-optout.postMessageSave",
-      `| campaign_contact_id: ${message.campaign_contact_id}`,
-      `| opt-out reason: ${handlerContext.autoOptOutReason}`
-    );
+    log.debug({
+      category: 'auto-optout',
+      event: 'postMessageSave',
+      orgId: organization.id,
+      contactId: message.campaign_contact_id,
+      reason: handlerContext.autoOptOutReason,
+    });
     let contact = await cacheableData.campaignContact.load(
       message.campaign_contact_id,
       { cacheOnly: true }
@@ -112,7 +114,7 @@ export const postMessageSave = async ({
     // OPTOUT
     await cacheableData.optOut.save({
       cell: message.contact_number,
-      campaignContactId: message.campaign_contact_id,
+      contactId: message.campaign_contact_id,
       assignmentId: (contact && contact.assignment_id) || null,
       campaign,
       noReply: true,

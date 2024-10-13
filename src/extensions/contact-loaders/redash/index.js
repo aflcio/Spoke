@@ -7,8 +7,10 @@ import { r, cacheableData } from "../../../server/models";
 import { getConfig, hasConfig } from "../../../server/api/lib/config";
 import httpRequest from "../../../server/lib/http-request";
 import https from "https";
+import { log as logger } from "../../../lib";
 
 export const name = "redash";
+const log = logger.child({category: 'cotact-loaders', loader: name});
 
 export function displayName() {
   return "Redash";
@@ -71,13 +73,14 @@ export async function downloadAndSaveResults(
   const organization = cacheableData.organization.load(organizationId);
   const baseUrl = getConfig("REDASH_BASE_URL", organization);
 
-  console.log(
-    "redash.downloadAndSaveResults",
+  log.info({
+    event: 'downloadAndSaveResults',
+    orgId: organizationId,
+    campaignId: job.campaign_id,
     queryId,
     resultId,
-    job.campaign_id,
     contextVars
-  );
+  })
   // 3. Download result csv
   const resultsUrl = `${baseUrl}/api/queries/${queryId}/results/${resultId}.csv`;
   const resultsDataResult = await httpRequest(resultsUrl, {
@@ -230,11 +233,10 @@ export async function processContactLoad(job, maxContacts, organization) {
     );
     return;
   }
-  console.log(
-    "refreshRedashResult",
-    refreshRedashResult,
-    refreshRedashResult.status
-  );
+  log.info({
+    event: 'refreshRedashResult',
+    refreshRedashResult
+  });
   if (refreshRedashResult.status != 200) {
     await failedContactLoad(
       job,

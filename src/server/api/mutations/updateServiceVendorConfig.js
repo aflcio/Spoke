@@ -9,6 +9,7 @@ import { getConfig } from "../../../server/api/lib/config";
 import orgCache from "../../models/cacheable_queries/organization";
 import { accessRequired } from "../errors";
 import { Organization } from "../../../server/models";
+import { log } from "../../../lib";
 
 export const updateServiceVendorConfig = async (
   _,
@@ -67,12 +68,9 @@ export const updateServiceVendorConfig = async (
       configObject,
       organization
     );
-  } catch (caught) {
-    // eslint-disable-next-line no-console
-    console.error(
-      `Error updating config for ${serviceName}: ${JSON.stringify(caught)}`
-    );
-    throw new GraphQLError(caught.message);
+  } catch (err) {
+    log.error({category: "mutations", event: "updateServiceVendorConfig", serviceName, err}, "Error updating config");
+    throw new GraphQLError(err.message);
   }
   // TODO: put this into a transaction (so read of features record doesn't get clobbered)
   const dbOrganization = await Organization.get(organizationId);
