@@ -14,7 +14,6 @@ import ListItemText from "@material-ui/core/ListItemText";
 import ListItemIcon from "@material-ui/core/ListItemIcon";
 
 import CannedResponseForm from "../CannedResponseForm";
-import { log } from "../../lib";
 
 const styles = {
   dialog: {
@@ -66,7 +65,7 @@ class ScriptList extends React.Component {
       try {
         await onCreateCannedResponse({ cannedResponse });
       } catch (err) {
-        log.error(err);
+        console.error(err);
       }
     };
 

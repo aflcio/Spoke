@@ -3,6 +3,7 @@ import { getConfig } from "./lib/config";
 import { Assignment, r, cacheableData } from "../models";
 import { getOffsets, defaultTimezoneIsBetweenTextingHours } from "../../lib";
 import { getDynamicAssignmentBatchPolicies } from "../../extensions/dynamicassignment-batches";
+import { log } from "../../lib";
 
 export function addWhereClauseForContactsFilterMessageStatusIrrespectiveOfPastDue(
   queryParameter,
@@ -321,12 +322,13 @@ export const resolvers = {
             offset => true
           );
         }
-        console.log(
-          "assignment.contactsCount tzStatusCounts Data Match Failed",
+        log.info({
+          category: 'assignment',
+          event: 'contactCount',
           hasAny,
           contactsFilter,
-          assignment.tzStatusCounts
-        );
+          tzStatusCounts: assignment.tzStatusCounts
+        }, "tzStatusCounts Data Match Failed");
       }
       if (hasAny) {
         const exists = await getContacts(

@@ -4,6 +4,7 @@ import serviceMap, {
 } from "./service_map";
 import orgCache from "../../server/models/cacheable_queries/organization";
 import { processServiceManagers } from "../service-managers";
+import { log } from "../../lib";
 export {
   errorDescription,
   getConfigKey,
@@ -55,11 +56,12 @@ export const createMessagingService = (organization, friendlyName) => {
   } else if (service === "signalwire") {
     // service = signalwire;
   }
-  console.log(
-    "service-vendors::createMessagingService",
+  log.info({
+    category: "service-vendors",
+    event: "createMessagingService",
     serviceName,
-    organization.id
-  );
+    orgId: organization.id
+  });
   if (service && service.createMessagingService) {
     return service.createMessagingService(organization, friendlyName);
   }

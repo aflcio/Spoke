@@ -1,4 +1,5 @@
 import { symmetricDecrypt } from "./crypto";
+import { log } from "../../lib";
 
 const SECRET_MANAGER_NAME =
   process.env.SECRET_MANAGER || global.SECRET_MANAGER || "default-encrypt";
@@ -9,7 +10,11 @@ function getSetup(name) {
     const c = require(`./${name}/index.js`);
     return c;
   } catch (err) {
-    console.error("SECRET_MANAGER failed to load", name, err);
+    log.error({
+      category: 'secret-manager',
+      name,
+      err
+    }, "SECRET_MANAGER failed to load");
   }
 }
 
