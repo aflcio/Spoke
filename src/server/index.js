@@ -77,7 +77,7 @@ const server = new ApolloServer({
       // another way to do this.
       // userId: request.user && request.user.id,
       code: error?.extensions?.code ?? 'INTERNAL_SERVER_ERROR',
-      error: formattedError,
+      err: error,
       msg: "GraphQL error"
     });
 
