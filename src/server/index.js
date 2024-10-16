@@ -11,7 +11,6 @@ import passport from "passport";
 import cookieSession from "cookie-session";
 import passportSetup from "./auth-passport";
 import { log } from "../lib";
-import telemetry from "./telemetry";
 import { addServerEndpoints as messagingServicesAddServerEndpoints } from "../extensions/service-vendors/service_map";
 import { getConfig } from "./api/lib/config";
 import { seedZipCodes } from "./seeds/seed-zip-codes";
@@ -25,6 +24,7 @@ import { expressMiddleware } from "@apollo/server/express4";
 import { ApolloServerPluginDrainHttpServer } from "@apollo/server/plugin/drainHttpServer";
 import http from "http";
 import cors from "cors";
+import { ApolloErrorLogger } from "./error-log";
 
 process.on("uncaughtException", ex => {
   log.error(ex);
@@ -69,7 +69,10 @@ const server = new ApolloServer({
   schema: executableSchema,
   resolvers,
   introspection: true,
-  plugins: [ApolloServerPluginDrainHttpServer({ httpServer })],
+  plugins: [
+    ApolloServerPluginDrainHttpServer({ httpServer }),
+    ApolloErrorLogger,
+  ],
   formatError: error => {
     if (process.env.SHOW_SERVER_ERROR || process.env.DEBUG) {
       if (error instanceof GraphQLError) {
