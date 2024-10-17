@@ -1,8 +1,10 @@
 import request from "request";
 import { r } from "../../server/models";
 import crypto from "crypto";
+import { log as logger } from "../../lib";
 
 export const name = "actionkit-rsvp";
+const log = logger.child({category: "actionkit-rsvp"});
 export const displayName = () => "ActionKit Event RSVP";
 
 export const instructions = () =>
@@ -45,11 +47,12 @@ export async function available(organizationId) {
       needed.push("AK_SECRET");
     }
     if (needed.length) {
-      console.error(
-        "actionkit-rsvp unavailable because " +
-          needed.join(", ") +
-          " must be set (either in environment variables or json value for organization)"
-      );
+      log.error({
+        event: "available",
+        orgId: organizationId,
+        needed
+      },
+      "actionkit-rsvp unavailable because needed variables must be set (either in environment variables or json value for organization)" );
     }
     isAvailable = !!needed.length;
   }
@@ -119,12 +122,7 @@ export async function processAction({ campaignContactId }) {
           async function(err, httpResponse, body) {
             // TODO: should we save the action id somewhere?
             if (err || (body && body.error)) {
-              console.error(
-                "error: actionkit event sign up failed",
-                err,
-                userData,
-                body
-              );
+              log.error({ event: "processAction", userData, body, err }, "actionkit event sign up failed");
             } else {
               if (httpResponse.headers && httpResponse.headers.location) {
                 const actionId = httpResponse.headers.location.match(
@@ -139,22 +137,13 @@ export async function processAction({ campaignContactId }) {
                     .update("custom_fields", JSON.stringify(customFields));
                 }
               }
-              console.info(
-                "actionkit event sign up SUCCESS!",
-                userData,
-                httpResponse,
-                body
-              );
+              log.info({ event: "processAction", userData, httpResponse, body }, "actionkit event sign up SUCCESS!");
             }
           }
         );
       }
     } catch (err) {
-      console.error(
-        "Processing Actionkit RSVP action failed on custom field parsing",
-        campaignContactId,
-        err
-      );
+      log.error({ contactId: campaignContactId, err }, "Processing Actionkit RSVP action failed on custom field parsing");
     }
   }
 }

@@ -148,9 +148,8 @@ const getPage = async (item, page, organization) => {
     })
       .then(async response => await response.json())
       .catch(error => {
-        const message = `Error retrieving ${item} from ActionNetwork ${error}`;
-        console.error(message);
-        throw new Error(message);
+        log.error({ event: "processAction", item, err}, "Error retrieving item from ActionNetwork");
+        throw new Error("Error retrieving item from ActionNetwork");
       });
 
     return {

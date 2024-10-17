@@ -6,6 +6,7 @@ import {
   cacheableData
 } from "../../../server/models";
 import { v4 as uuidv4 } from 'uuid';
+import { log } from "../../../lib";
 
 // This 'fakeservice' allows for fake-sending messages
 // that end up just in the db appropriately and then using sendReply() graphql
@@ -33,11 +34,13 @@ export async function sendMessage({
     error_code: errorCode ? errorCode[1] : null
   };
 
-  // console.log(
-  //   "fakeservice sendMessage",
-  //   message && message.id,
-  //   contact && contact.id
-  // );
+  log.info({
+    event: "sendMessage",
+    orgId: organization.id,
+    campaignId: campaign?.id,
+    messageId: message.id,
+    contactId: contact.id,
+  });
   if (message && message.id) {
     let request = r.knex("message");
     if (trx) {
