@@ -2,6 +2,7 @@ import request from "request";
 import { r } from "../../server/models";
 import { actionKitSignup } from "./helper-ak-sync.js";
 import { getConfig } from "../../server/api/lib/config";
+import { log } from "../../lib/log.js";
 
 export const name = "mobilecommons-signup";
 
@@ -99,7 +100,7 @@ export async function processAction({
   };
 
   if (process.env.UMC_DEBUG) {
-    console.log("UMC_DEBUG enabled", options);
+    log.info({ options }, "UMC_DEBUG enabled");
     return;
   }
   return request(options, (error, response) => {

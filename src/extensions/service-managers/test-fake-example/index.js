@@ -1,7 +1,10 @@
+import { log as logger } from "../../../lib";
+
 /// All functions are OPTIONAL EXCEPT metadata() and const name=.
 /// DO NOT IMPLEMENT ANYTHING YOU WILL NOT USE -- the existence of a function adds behavior/UI (sometimes costly)
 
 export const name = "test-fake-example";
+const log = logger.child({ category: "test-fake-example" });
 
 export const metadata = () => ({
   // set canSpendMoney=true, if this extension can lead to (additional) money being spent
@@ -98,13 +101,13 @@ export async function onCampaignContactLoad({
   finalContactCount,
   deleteOptOutCells
 }) {
-  console.log(
-    "service-managers.test-fake-example.OnCampaignContactLoad 11",
-    organization.id,
-    campaign.id,
+  log.info({
+    event: "onCampaignContactLoad",
+    orgId: organization.id,
+    campaignId: campaign.id,
     ingestResult,
     ingestDataReference
-  );
+  }, "Message about what happened during contact load");
 }
 
 export async function getOrganizationData({ organization, user, loaders }) {
@@ -150,11 +153,12 @@ export async function onOrganizationUpdateSignal({
 }
 
 export async function onCampaignStart({ organization, campaign, user }) {
-  console.log(
-    "service-managers.test-fake-example onCampaignStart",
-    campaign.id,
-    user.id
-  );
+  log.info({
+    event: "onCampaignStart",
+    orgId: organization.id,
+    campaignId: campaign.id,
+    userId: user.id
+  }, "Message about what happened on campaign start");
 }
 
 export async function onCampaignArchive({}) {}

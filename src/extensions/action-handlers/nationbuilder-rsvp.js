@@ -1,4 +1,5 @@
 import fetch from "node-fetch";
+import { log as logger } from "../../lib";
 
 /*
   Campaign contacts must be uploaded with the following custom fields:
@@ -17,7 +18,7 @@ import fetch from "node-fetch";
   You should then add a question that displays a list of events (likely populated from a custom field) and create
   as many question responses as the maximum number of events that can be selected. Add this handler to that question.
 
-  The question responses should have the index of the event in the name (with the index at 1). E.g. the response 
+  The question responses should have the index of the event in the name (with the index at 1). E.g. the response
   with name "Event 1" would reference the first event in the nationbuilder_event_ids list.
 
   When a question response is selected, it will find the event id for that index and attempt to RSVP this person to
@@ -25,6 +26,7 @@ import fetch from "node-fetch";
 */
 
 export const name = "nationbuilder-rsvp";
+const log = logger.child({category: "nationbuilder-rsvp"});
 
 export const displayName = () => "NationBuilder Event RSVP";
 
@@ -75,7 +77,7 @@ export async function getClientChoiceData(organization, user) {
   const debug = process.env.NATIONBUILDER_DEBUG;
   const expires = process.env.NATIONBUILDER_EVENT_CACHE_EXPIRES || 300;
 
-  console.info(`${name}: Updating events from NB`);
+  log.debug({ event: "getClientChoiceData" }, "Updating events from NB");
 
   const items = [];
   try {
@@ -91,17 +93,17 @@ export async function getClientChoiceData(organization, user) {
         name: event.name,
         details: JSON.stringify({ id: event.id })
       };
-      if (debug) console.info(`${name}: Adding event:`, item);
+      if (debug) log.info({ event: "getClientChoiceData", item }, "Adding event");
       items.push(item);
     }
-  } catch (e) {
-    console.error(`${name}: Error fetching NB events:`, e);
+  } catch (err) {
+    log.error({ event: "getClientChoiceData", err}, "Error fetching NB events");
     items.push({
       name: "error"
     });
   }
 
-  if (debug) console.info(`${name}: Caching NB response for ${expires}s`);
+  if (debug) log.info({ event: "getClientChoiceData", expires }, "Caching NB response");
   return {
     data: `${JSON.stringify({ items })}`,
     expiresSeconds: expires
@@ -121,11 +123,7 @@ export async function processAction({ interactionStep, contact }) {
   );
 
   if (debug)
-    console.info(
-      `${name}: processing contact/action:`,
-      contactFields,
-      actionData
-    );
+    log.info({event: "processAction", contactFields, actionData}, "processing contact/action");
 
   const eventId = actionData.id;
   const rsvp_params = {
@@ -158,27 +156,26 @@ export async function processAction({ interactionStep, contact }) {
     );
     if (response.ok) {
       const rsvp = await response.json();
-      if (debug) console.info(`${name}: Success:`, rsvp);
+      if (debug) log.info({event: "processAction", rsvp}, "Success");
       contactFieldResponse.status = "success";
       contactFieldResponse.rsvp_id = rsvp.id;
     } else {
       const body = await response.text();
       if (body.match(/signup_id has already been taken/)) {
-        if (debug) console.info(`${name}: Already RSVP'ed:`, body);
+        if (debug) log.info({event: "processAction", body}, "Already RSVP'ed");
         contactFieldResponse.status = "success";
         contactFieldResponse.message = "already rsvped";
       } else {
-        console.error(
-          `${name}: NB error processing RSVP:`,
-          response.status,
-          response.statusText,
+        log.error({
+          event: "processAction",
+          response,
           body
-        );
+        }, "NB error processing RSVP");
         throw Error(body);
       }
     }
   } catch (e) {
-    console.error(`${name}: System error processing RSVP:`, e);
+    log.error({event: "processAction", err: e}, "System error processing RSVP");
     contactFieldResponse.status = "error";
     contactFieldResponse.message = e.toString();
   }

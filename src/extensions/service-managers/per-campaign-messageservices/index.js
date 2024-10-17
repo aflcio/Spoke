@@ -20,8 +20,10 @@ import { getServiceNameFromOrganization } from "../../service-vendors";
 import * as twilio from "../../service-vendors/twilio";
 import { camelizeKeys } from "humps";
 import usAreaCodes from "us-area-codes/data/codes.json";
+import { log as logger } from "../../../lib";
 
 export const name = "per-campaign-messageservices";
+const log = logger.child({category: "per-campaign-messageservices"});
 
 export const metadata = () => ({
   // set canSpendMoney=true, if this extension can lead to (additional) money being spent
@@ -290,15 +292,21 @@ async function prepareTwilioCampaign(campaign, organization, trx) {
         allocated_to_id: campaign.id.toString()
       })
   ).map(row => row.service_id);
-  console.log(`Transferring ${phoneSids.length} numbers to ${msgSrvSid}`);
+  log.info({
+    event: "prepareTwilioCampaign",
+    orgId: organization.id,
+    campaignId: campaign.id,
+    count: phoneSids.length,
+    msgSrvSid
+  }, "Transfering numbers to messaging service");
   try {
     await twilio.addNumbersToMessagingService(
       organization,
       phoneSids,
       msgSrvSid
     );
-  } catch (e) {
-    console.error("Failed to add numbers to messaging service", e);
+  } catch (err) {
+    log.error({event: "prepareTwilioCampaign", err}, "Failed to add numbers to messaging service");
     if (msgSrvSid) {
       // only delete campaign message service
       await twilio.deleteMessagingService(organization, msgSrvSid);
@@ -348,10 +356,12 @@ export async function onCampaignStart({ organization, campaign, user }) {
       await cacheableData.campaign.clear(campaign.id);
     });
   } catch (e) {
-    console.error(
-      `per-campaign-messageservices failed to start campaign: ${e.message}`,
-      e
-    );
+    log.error({
+      event: "onCampaignStart",
+      orgId: organization.id,
+      campaignId: campaign.id,
+      err: e,
+    }, "per-campaign-messageservices failed to start campaign");
     throw new Error(
       `per-campaign-messageservices failed to start create messageservice: ${e.message}`
     );

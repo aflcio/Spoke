@@ -1,7 +1,9 @@
 import request from "request";
 import { r } from "../../server/models";
+import { log as logger } from "../../lib";
 
 export const name = "test-action";
+const log = logger.child({category: "test-action"});
 
 // What the user sees as the option
 export const displayName = () => "Test Action";
@@ -69,5 +71,5 @@ export async function processAction({
 //   organization,
 //   texter
 // ) {
-//   console.log("TEST TAG HANDLER", {tags, contact, campaign, organization, texter});
+//   log.info({tags, contact, campaign, organization, texter}, "TEST TAG HANDLER");
 // }
