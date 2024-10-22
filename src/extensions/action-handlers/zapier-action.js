@@ -5,6 +5,7 @@ import httpRequest from "../../server/lib/http-request.js";
 
 export const name = "zapier-action";
 const log = logger.child({category: "zapier-action" });
+export { log as zapierLog };
 
 // What the user sees as the option
 export const displayName = () => "ZAPIER";

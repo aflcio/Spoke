@@ -47,7 +47,7 @@ export const updateContactTags = async (
       log.error({category: "mutations", event: "updateContactTags", err}, "Dispatching to one or more tag handlers failed")
     );
   } catch (err) {
-    log.error({category: "mutations", event: "updateContactTags", campaignContactId, tags, err}, "Error saving tagCampaignContact");
+    log.error({category: "mutations", event: "updateContactTags", contactId: campaignContactId, tags, err}, "Error saving tagCampaignContact");
     throw err;
   }
 

@@ -9,6 +9,7 @@ import { log as logger } from "../../lib";
 
 export const name = "ngpvan-action";
 const log = logger.child({category: "ngpvan-action"});
+export { log as vanLog }
 
 // What the user sees as the option
 export const displayName = () => "NGPVAN action";
@@ -43,24 +44,24 @@ export function clientChoiceDataCacheKey() {
 }
 
 export const postCanvassResponse = async (contact, organization, bodyInput) => {
-  const childLogger = log.child({
-    event: 'postCanvassResponse',
+  const logInfo = {
+    event: "postCanvassResponse",
     orgId: organization.id,
     contactId: contact.id,
-  });
+  };
   let vanId;
   let vanPhoneId;
   try {
     const customFields = JSON.parse(contact.custom_fields || "{}");
     vanId = customFields.VanID || customFields.vanid;
     vanPhoneId = customFields.VanPhoneId || customFields.vanPhoneId;
-  } catch (caughtException) {
-    log.error(caughtException, "Error parsing custom_fields for contact");
+  } catch (err) {
+    log.error({ ...logInfo, err }, "Error parsing custom_fields for contact");
     return {};
   }
 
   if (!vanId) {
-    log.error("Cannot sync results to van for campaign_contact. No VanID in custom fields");
+    log.error({ ...logInfo }, "Cannot sync results to van for campaign_contact. No VanID in custom fields");
     return {};
   }
 
@@ -83,7 +84,7 @@ export const postCanvassResponse = async (contact, organization, bodyInput) => {
 
   const url = Van.makeUrl(`v4/people/${vanId}/canvassResponses`, organization);
 
-  log.info({vanId, body}, "Sending contact update to VAN");
+  log.info({ ...logInfo, vanId, body }, "Sending contact update to VAN");
 
   return httpRequest(url, {
     method: "POST",
@@ -384,6 +385,7 @@ export async function available(organization) {
       }
     } catch (caughtError) {
       log.error(caughtError, "ngpvan-action unavailable. getClientChoiceData threw an exception");
+      result = false;
     }
   }
 

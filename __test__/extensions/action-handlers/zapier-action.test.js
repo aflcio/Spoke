@@ -6,7 +6,7 @@ import nock from "nock";
 
 const ZapierAction = require("../../../src/extensions/action-handlers/zapier-action");
 require("../../test_helpers");
-const log = require("../../../src/lib").log;
+const log = require("../../../src/extensions/action-handlers/zapier-action").zapierLog;
 
 afterEach(async () => {
   jest.restoreAllMocks();
@@ -19,7 +19,7 @@ describe("zapier-action", () => {
 
   beforeEach(async () => {
     process.env = { ...OLD_ENV };
-    jest.spyOn(log, "info");
+    jest.spyOn(log, "warn");
     veryFakeOrganization = {
       id: 9001
     };
@@ -59,9 +59,14 @@ describe("zapier-action", () => {
     it("should bail if ZAPIER_WEBHOOK_URL is undefined", async () => {
       process.env.ZAPIER_WEBHOOK_URL = undefined;
       const ret = await ZapierAction.onTagUpdate(null, null, null, null, null);
-      expect(log.info.mock.calls[0][0]).toEqual(
-        "ZAPIER_WEBHOOK_URL is undefined. Exiting."
-      );
+      expect(log.warn.mock.calls).toEqual([
+        [
+          expect.objectContaining({
+            event: "onTagUpdate",
+          }),
+          "ZAPIER_WEBHOOK_URL is undefined. Exiting."
+        ]
+      ]);
     });
 
     it("should craft the expected payload and submit it to the configured endpoint", async () => {
@@ -674,9 +679,14 @@ describe("zapier-action", () => {
         organization,
         previousValue
       });
-      expect(log.info.mock.calls[0][0]).toEqual(
-        "ZAPIER_ACTION_URL is undefined. Exiting."
-      );
+      expect(log.warn.mock.calls).toEqual([
+        [
+          expect.objectContaining({
+            event: "processAction",
+          }),
+          "ZAPIER_ACTION_URL is undefined. Exiting."
+        ]
+      ]);
     });
 
     it("should use ZAPIER_ACTION_URL if ZAPIER_CONFIG_OBJECT is undefined", async () => {

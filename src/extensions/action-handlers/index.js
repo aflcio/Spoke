@@ -3,7 +3,8 @@ import { r } from "../../server/models";
 import { log as logger} from "../../lib";
 import _ from "lodash";
 
-const log = logger.child({category: 'action-handlers'});
+const log = logger.child({ category: "action-handlers" });
+export { log as actionLog }
 
 export const availabilityCacheKey = (name, organization, userId) =>
   `${getConfig("CACHE_PREFIX", organization) || ""}action-avail-${name}-${
@@ -164,11 +165,11 @@ export async function getAvailableActionHandlers(organization, user) {
 }
 
 export async function getActionChoiceData(actionHandler, organization, user) {
-  const childLogger = log.child({
-    event: 'getActionChoiceData',
+  const logInfo = {
+    event: "getActionChoiceData",
     orgId: organization.id,
     name: actionHandler.name,
-  });
+  };
   const cacheKeyFunc = actionHandler.clientChoiceDataCacheKey || (() => "");
   const clientChoiceDataFunc =
     actionHandler.getClientChoiceData || (() => ({ data: "{}" }));
@@ -181,7 +182,7 @@ export async function getActionChoiceData(actionHandler, organization, user) {
       cacheKeyFunc(organization, user)
     );
   } catch (err) {
-    log.error(err, "EXCEPTION GENERATING CACHE KEY for action handler");
+    log.error({...logInfo, err}, "EXCEPTION GENERATING CACHE KEY for action handler");
   }
 
   let returned;
@@ -191,7 +192,7 @@ export async function getActionChoiceData(actionHandler, organization, user) {
         clientChoiceDataFunc(organization, user)
       )) || {};
   } catch (err) {
-    log.error(err, "EXCEPTION GETTING CLIENT CHOICE DATA for action handler");
+    log.error({...logInfo, err}, "EXCEPTION GETTING CLIENT CHOICE DATA for action handler");
     returned = {};
   }
 
@@ -200,14 +201,14 @@ export async function getActionChoiceData(actionHandler, organization, user) {
   let parsedData;
   try {
     parsedData = JSON.parse(data);
-  } catch (caughtException) {
-    log.error("Bad JSON received from getClientChoiceData");
+  } catch (err) {
+    log.error({...logInfo, err}, "Bad JSON received from getClientChoiceData");
     parsedData = {};
   }
 
   let { items } = parsedData;
   if (items && !Array.isArray(items)) {
-    log.error("Data received from getClientChoiceData is not an array");
+    log.error({...logInfo, items}, "Data received from getClientChoiceData is not an array");
     items = undefined;
   }
   return items || [];

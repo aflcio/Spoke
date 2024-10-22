@@ -5,7 +5,7 @@ import { log as logger } from "../lib";
 import { getConfig } from "./api/lib/config";
 import _ from "lodash";
 
-const log = logger.child({catgegory: "telemetry"});
+const log = logger.child({category: "telemetry"});
 const stage = getConfig("STAGE") || "local";
 const functionName = process.env.AWS_LAMBDA_FUNCTION_NAME || "NOT_SET";
 

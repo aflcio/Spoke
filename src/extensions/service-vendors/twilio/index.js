@@ -276,7 +276,7 @@ export async function sendMessage({
     log.warn({
       event: "sendMessage",
       orgId: organization.id,
-      campaignId: campaign.id,
+      campaignId: campaign?.id,
       messageId: message.id
     }, "cannot actually send SMS message -- twilio is not fully configured");
     if (message.id) {
@@ -374,7 +374,7 @@ export async function sendMessage({
     log.info({
       event: "sendMessage",
       orgId: organization.id,
-      camapignId: campaign.id,
+      camapignId: campaign?.id,
       message: messageParams,
     });
     if (APITEST) {

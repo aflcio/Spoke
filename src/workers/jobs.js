@@ -48,7 +48,7 @@ import { jobRunner } from "../extensions/job-runners";
 import fs from "fs";
 import path from "path";
 
-const log = logger.child({category: 'job'});
+const log = logger.child({ category: "job" });
 
 const defensivelyDeleteOldJobsForCampaignJobType = async job => {
   log.info({
@@ -500,7 +500,13 @@ export async function assignTexters(job) {
 
   const payload = JSON.parse(job.payload);
   const cid = job.campaign_id;
-  log.info({cid, payload}, "assignTexters1");
+  const log = logger.child({
+    cateory: "job",
+    jobType: "assignTexters",
+    orgId: job?.organization?.id,
+    campaignId: cid,
+  });
+  log.info({ payload }, "assignTexters1");
   const campaign = (await r.knex("campaign").where({ id: cid }))[0];
   const texters = payload.texters;
   const currentAssignments = await r

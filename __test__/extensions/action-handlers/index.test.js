@@ -10,7 +10,6 @@ const ActionHandlers = require("../../../src/extensions/action-handlers");
 const uuidv4 = require("uuid").v4;
 const TestAction = require("../../../src/extensions/action-handlers/test-action");
 const ComplexTestAction = require("../../../src/extensions/action-handlers/complex-test-action");
-const { log } = require("../../../src/lib");
 
 describe("action-handlers/index", () => {
   let organization;
@@ -412,7 +411,7 @@ describe("action-handlers/index", () => {
             throw new Error("fake complaint");
           });
 
-        jest.spyOn(log, "error");
+        jest.spyOn(ActionHandlers.actionLog, "error");
       });
 
       it("returns false", async () => {
@@ -423,9 +422,14 @@ describe("action-handlers/index", () => {
           user
         );
         expect(returned).toEqual(false);
-        expect(log.error.mock.calls).toEqual([
+        expect(ActionHandlers.actionLog.error.mock.calls).toEqual([
           [
-            "FAILED TO POLL AVAILABILITY from action handler test-action. Error: fake complaint"
+            expect.objectContaining({
+              event: "getActionHandlerAvailability",
+              err: Error("fake complaint"),
+              name: "test-action",
+            }),
+            expect.stringMatching("FAILED TO POLL AVAILABILITY from action handler")
           ]
         ]);
       });
@@ -700,7 +704,7 @@ describe("action-handlers/index", () => {
             data: JSON.stringify({ items: {} }),
             expiresSeconds: 77
           });
-          jest.spyOn(log, "error");
+          jest.spyOn(ActionHandlers.actionLog, "error");
         });
         it("returns an empty array", async () => {
           const returned = await ActionHandlers.getActionChoiceData(
@@ -709,9 +713,13 @@ describe("action-handlers/index", () => {
             user
           );
           expect(returned).toEqual([]);
-          expect(log.error.mock.calls).toEqual([
+          expect(ActionHandlers.actionLog.error.mock.calls).toEqual([
             [
-              "Data received from fake-action.getClientChoiceData is not an array"
+              expect.objectContaining({
+                event: "getActionChoiceData",
+                name: "fake-action",
+              }),
+              "Data received from getClientChoiceData is not an array"
             ]
           ]);
         });
@@ -724,7 +732,7 @@ describe("action-handlers/index", () => {
           };
           fakeAction.getClientChoiceData =
             ComplexTestAction.getClientChoiceData;
-          jest.spyOn(log, "error");
+          jest.spyOn(ActionHandlers.actionLog, "error");
           jest.spyOn(ActionHandlers, "getSetCacheableResult");
         });
         it("returns an empty array", async () => {
@@ -734,9 +742,14 @@ describe("action-handlers/index", () => {
             user
           );
           expect(returned).toEqual(expectedReturn);
-          expect(log.error.mock.calls).toEqual([
+          expect(ActionHandlers.actionLog.error.mock.calls).toEqual([
             [
-              "EXCEPTION GENERATING CACHE KEY for action handler fake-action Error: broken action handler"
+              expect.objectContaining({
+                event: "getActionChoiceData",
+                name: "fake-action",
+                err: Error("broken action handler"),
+              }),
+              "EXCEPTION GENERATING CACHE KEY for action handler"
             ]
           ]);
           expect(ActionHandlers.getSetCacheableResult.mock.calls).toEqual([
@@ -752,7 +765,7 @@ describe("action-handlers/index", () => {
           fakeAction.getClientChoiceData = () => {
             throw new Error("complaint");
           };
-          jest.spyOn(log, "error");
+          jest.spyOn(ActionHandlers.actionLog, "error");
           jest.spyOn(ActionHandlers, "getSetCacheableResult");
         });
         it("returns an empty array", async () => {
@@ -762,9 +775,14 @@ describe("action-handlers/index", () => {
             user
           );
           expect(returned).toEqual([]);
-          expect(log.error.mock.calls).toEqual([
+          expect(ActionHandlers.actionLog.error.mock.calls).toEqual([
             [
-              "EXCEPTION GETTING CLIENT CHOICE DATA for action handler fake-action Error: complaint"
+              expect.objectContaining({
+                event: "getActionChoiceData",
+                name: "fake-action",
+                err: Error('complaint'),
+              }),
+              "EXCEPTION GETTING CLIENT CHOICE DATA for action handler"
             ]
           ]);
           expect(ActionHandlers.getSetCacheableResult.mock.calls).toEqual([
