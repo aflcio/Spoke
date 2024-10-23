@@ -138,7 +138,7 @@ export async function sendMessage({
       config.accountId,
       bandwidthMessage
     );
-    log.info({
+    const msgLog = {
       event: "sendMessage",
       orgId: organization.id,
       campaignId: campaign?.id,
@@ -148,7 +148,8 @@ export async function sendMessage({
       messageId: message.id,
       statusCode: status,
       data,
-    });
+    };
+    statusCode == 202 ? log.info(msgLog) : log.warn(msgLog);
     await postMessageSend({
       status,
       data,

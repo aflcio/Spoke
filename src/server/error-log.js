@@ -7,6 +7,8 @@ const warnCodes = [
   "SENDERR_OPTOUT",
   "SENDERR_OFFHOURS",
   "DUPLICATE_REPLY_MESSAGE",
+  "UNAUTHENTICATED",
+  "UNAUTHORIZED",
 ];
 
 // Apollo plugin that logs server errors through pino and telemetry.
