@@ -236,7 +236,7 @@ export const resolvers = {
       r.redis ? (getConfig("REDIS_CONTACT_CACHE", org) ? 2 : 1) : 0,
     serviceVendor: async (organization, _, { user }) => {
       try {
-        await accessRequired(user, organization.id, "OWNER");
+        await accessRequired(user, organization.id, "ADMIN");
         const serviceName = cacheableData.organization.getMessageService(
           organization
         );
