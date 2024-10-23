@@ -1,4 +1,5 @@
 import { getConfig } from "../../server/api/lib/config";
+import { log } from "../../lib";
 
 // Checks the gloabl var DYNAMICASSIGNMENT_BATCHES and
 // whether the handler loads, similar to how texter-sideboxes works
@@ -28,9 +29,14 @@ export const getDynamicAssignmentBatchPolicies = ({
       const c = require(`./${name}/index.js`);
       handlers.push(c);
     } catch (err) {
-      console.error(
-        `${handlerKey} failed to load dynamicassignment-batches handler ${name} -- ${err}`
-      );
+      log.error({
+        category: 'dynamicassignment-batches',
+        orgId: organization.id,
+        campaignId: campaign.id,
+        handlerKey,
+        name,
+        err
+      }, "failed to load dynamicassignment-batches handler");
     }
   });
   return handlers;

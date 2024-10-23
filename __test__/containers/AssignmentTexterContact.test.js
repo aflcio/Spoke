@@ -13,7 +13,6 @@ import * as timezones from "../../src/lib/timezones";
 
 const MockDate = require("mockdate");
 
-jest.useFakeTimers();
 
 const campaign = {
   id: 9,
@@ -103,6 +102,14 @@ const propsWithEnforcedTextingHoursCampaign = {
 };
 
 describe("when contact is not within texting hours...", () => {
+  beforeAll(() => {
+    jest.useFakeTimers();
+  });
+
+  afterAll(() => {
+    jest.useRealTimers();
+  });
+
   afterEach(() => {
     propsWithEnforcedTextingHoursCampaign.refreshData.mockReset();
   });
@@ -139,6 +146,12 @@ describe("when contact is not within texting hours...", () => {
 });
 
 describe("when contact is within texting hours...", () => {
+  beforeAll(() => {
+    jest.useFakeTimers();
+  });
+  afterAll(() => {
+    jest.useRealTimers();
+  });
   beforeEach(() => {
     jest.spyOn(timezones, "isBetweenTextingHours").mockReturnValue(true);
 
@@ -205,7 +218,7 @@ describe("test isContactBetweenTextingHours", () => {
     assignmentTexterContact = new AssignmentTexterContact(
       propsWithEnforcedTextingHoursCampaign
     );
-
+    jest.useFakeTimers();
     jest
       .spyOn(timezones, "isBetweenTextingHours")
       .mockImplementation((o, c) => false);
@@ -220,6 +233,7 @@ describe("test isContactBetweenTextingHours", () => {
   });
 
   afterAll(() => {
+    jest.useRealTimers();
     MockDate.reset();
   });
 

@@ -1,5 +1,6 @@
 import { assignmentRequiredOrAdminRole } from "../errors";
 import { cacheableData } from "../../models";
+import { log } from "../../../lib";
 
 export const updateContactCustomFields = async (
   _,
@@ -28,11 +29,13 @@ export const updateContactCustomFields = async (
       organization
     );
   } catch (err) {
-    // eslint-disable-next-line no-console
-    console.error(
-      `Error updating contact campaignContactID: ${campaignContactId}` +
-        ` customFields: ${customFields} error: ${err}`
-    );
+    log.error({
+      category: "mutations",
+      event: "updateContactCustomFields",
+      contactId: campaignContactId,
+      customFields,
+      err
+    }, "Error updating contact");
     throw err;
   }
 
@@ -41,8 +44,11 @@ export const updateContactCustomFields = async (
       // eslint-disable-next-line no-param-reassign
       customFields = JSON.parse(customFields || "{}");
     } catch (err) {
-      // eslint-disable-next-line no-console
-      console.log(err);
+      log.error({
+        category: "mutations",
+        event: "updateContactCustomFields",
+        err
+      });
     }
   }
 

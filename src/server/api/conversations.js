@@ -204,22 +204,24 @@ export async function getConversations(
       .limit(cursor.limit)
       .offset(cursor.offset);
   }
-  console.log(
-    `Org Id: ${organizationId} :: getConversations sql -- \n`,
-    `\tawsContext: ${awsContext && awsContext.awsRequestId ? true : false}\n`,
-    `\tcursor: limit=${cursor.limit}, offset=${cursor.offset}\n`,
-    `\tassignmentsFilter: ${Object.keys(assignmentsFilter).length > 0 ? assignmentsFilter : "no filter"}\n`,
-    `\toffsetLimitQuery: ${offsetLimitQuery.toString()}`
-  );
+  log.debug({
+    event: "getConversations sql",
+    orgId: organizationId,
+    awsRequestId: awsContext?.awsRequestId,
+    cursor,
+    assignmentsFilter,
+    offsetLimitQuery
+  });
 
   const ccIdRows = await offsetLimitQuery;
 
-  console.log(
-    `Org Id: ${organizationId} :: getConversations query1 contact ids -- \n`,
-    `\tawsContext: ${awsContext && awsContext.awsRequestId === undefined ? true : false}\n`,
-    `\ttime: ${Number(new Date()) - Number(starttime)}ms\n`,
-    `\tccIdRows length: ${ccIdRows.length}`
-  );
+  log.debug({
+    event: "getConversations query1 contact ids",
+    orgId: organizationId,
+    awsRequestId: awsContext?.awsRequestId,
+    duration: Number(new Date()) - Number(starttime),
+    rows: ccIdRows.length,
+  });
   const ccIds = ccIdRows.map(ccIdRow => {
     return ccIdRow.cc_id;
   });
@@ -271,12 +273,13 @@ export async function getConversations(
 
   query = query.orderBy("cc_id", "desc").orderBy("message.id");
   const conversationRows = await query;
-  console.log(
-    `Org Id: ${organizationId} :: getConversations query2 conversations -- \n`,
-    `\tawsContext: ${awsContext && awsContext.awsRequestId === undefined ? true : false}\n`,
-    `\ttime: ${Number(new Date()) - Number(starttime)}ms\n`,
-    `\tconversationRows lenght: ${conversationRows.length}`
-  );
+  log.debug({
+    event: "getConversations query2 conversations",
+    orgId: organizationId,
+    awsRequestId: awsContext?.awsRequestId,
+    duration: Number(new Date()) - Number(starttime),
+    rows: conversationRows.length
+  });
   /* collapse the rows to produce an array of objects, with each object
    * containing the fields for one conversation, each having an array of
    * message objects */
@@ -337,11 +340,11 @@ export async function getConversations(
 
   /* Query #3 -- get the count of all conversations matching the criteria.
    * We need this to show total number of conversations to support paging */
-  console.log(
-    "getConversations query3 total count + time for total completion of queries\n",
-    `\ttime: ${Number(new Date()) - Number(starttime)}ms\n`,
-    `\ttotal conversations: ${conversations.length}`
-  );
+  log.debug({
+    category: "getConversations query3",
+    duration: Number(new Date()) - Number(starttime),
+    total: conversations.length,
+  });
   const conversationsCountQuery = getConversationsJoinsAndWhereClause(
     r.knexReadOnly,
     organizationId,
@@ -362,7 +365,7 @@ export async function getConversations(
   } catch (err) {
     // default fake value that means 'a lot'
     conversationCount = 9999;
-    console.log("getConversations timeout", err);
+    log.error({event: "getConversations", err},"getConversations timeout");
   }
 
   const pageInfo = {
@@ -487,8 +490,8 @@ export async function reassignConversations(
         });
       }
     }
-  } catch (error) {
-    log.error(error);
+  } catch (err) {
+    log.error({event: "reassignConversations", err});
   }
 
   return returnCampaignIdAssignmentIds;
@@ -509,7 +512,6 @@ export const resolvers = {
   },
   Conversation: {
     texter: queryResult => {
-      // console.log("getConversation texter");
       return mapQueryFieldsToResolverFields(queryResult, {
         u_id: "id",
         u_first_name: "first_name",
@@ -518,7 +520,6 @@ export const resolvers = {
       });
     },
     contact: queryResult => {
-      // console.log("getConversation contact", queryResult);
       return mapQueryFieldsToResolverFields(queryResult, {
         cc_id: "id",
         cc_first_name: "first_name",
@@ -526,7 +527,6 @@ export const resolvers = {
       });
     },
     campaign: queryResult => {
-      // console.log("getConversation campaign");
       return mapQueryFieldsToResolverFields(queryResult, { cmp_id: "id" });
     }
   }

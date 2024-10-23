@@ -4,7 +4,7 @@ import { GraphQLError } from "graphql";
 import { SpokeError } from "./errors";
 import isUrl from "is-url";
 import _ from "lodash";
-import { gzip, makeTree, getHighestRole } from "../../lib";
+import { log as logger, gzip, makeTree, getHighestRole } from "../../lib";
 import { capitalizeWord, groupCannedResponses } from "./lib/utils";
 import httpRequest from "../lib/http-request";
 import ownedPhoneNumber from "./lib/owned-phone-number";
@@ -83,6 +83,7 @@ import { Jobs } from "../../workers/job-processes";
 import { Tasks } from "../../workers/tasks";
 
 const uuidv4 = require("uuid").v4;
+const log = logger.child({category: "mutations"});
 
 // This function determines whether a field was requested
 // in a graphql query. Each graphql resolver receives a fourth parameter,
@@ -307,7 +308,7 @@ async function editCampaign(id, campaign, loaders, user, origCampaignRecord) {
           ingest_success: null
         });
     } else {
-      console.error("ingestMethod unavailable", campaign.ingestMethod);
+      log.error({event: 'editCampaign', campaignId: id, ingestMethod:  campaign.ingestMethod}, "ingestMethod unavailable");
     }
   }
 
@@ -411,11 +412,7 @@ async function editCampaign(id, campaign, loaders, user, origCampaignRecord) {
   // hacky easter egg to force reload campaign contacts
   if (r.redis && campaignUpdates.description?.endsWith("..")) {
     // some asynchronous cache-priming
-    console.log(
-      "force-loading loadCampaignCache",
-      campaignRefreshed,
-      organization
-    );
+    log.info({event: "editCampaign", orgId: organization.id, campaignId: id, campaignRefreshed}, "force-loading loadCampaignCache");
     await jobRunner.dispatchTask(Tasks.CAMPAIGN_START_CACHE, {
       campaign: campaignRefreshed,
       organization
@@ -710,7 +707,7 @@ const rootMutations = {
             compress: false
           });
           res = await res.text();
-          console.log(res, email);
+          log.info({event: "resetUserPasswrod", res, email});
           return res;
         } catch (err) {
           //handles error and sends it to the client
@@ -1171,7 +1168,7 @@ const rootMutations = {
         ? [{ campaignContactId }]
         : campaignIdsContactIds;
       // this is lazy but is not likely to be done in great bulk
-      console.log("editCampaignContactMessageStatus", contacts);
+      log.info({event: "editCampaignContactMessageStatus"}, contacts);
       await Promise.all(
         contacts.map(async ({ campaignContactId }) => {
           const contact = await cacheableData.campaignContact.load(
@@ -1250,7 +1247,7 @@ const rootMutations = {
           updatedContacts[c.id] = c;
         });
       }
-      console.log("getAssignedContacts", contacts.length, updatedContacts);
+      log.debug({event: "getAssignmentContacts", count: contacts.length, updatedContacts});
       const finalContacts = contacts
         .map(c => c && (updatedContacts[c.id] || c))
         .map(hasAssn);
@@ -1299,23 +1296,23 @@ const rootMutations = {
       );
       const campaign = await loaders.campaign.load(contact.campaign_id);
 
-      console.log(
-        "createOptOut",
-        campaignContactId,
-        contact.campaign_id,
-        contact.assignment_id
-      );
+      log.info({
+        event: "createOptOut",
+        contactId: campaignContactId,
+        campaignId: contact.campaign_id,
+        assignmentId: contact.assignment_id
+      });
       await assignmentRequiredOrAdminRole(
         user,
         campaign.organization_id,
         contact.assignment_id,
         contact
       );
-      console.log(
-        "createOptOut post access",
-        campaignContactId,
-        contact.campaign_id
-      );
+      log.debug({
+        event: "createOptOut post access",
+        contactId: campaignContactId,
+        campaignId: contact.campaign_id,
+      });
       const { assignmentId, reason } = optOut;
       const organization = await Organization.get(campaign.organization_id);
       await cacheableData.optOut.save({
@@ -1329,11 +1326,11 @@ const rootMutations = {
         user,
         organization
       });
-      console.log(
-        "createOptOut post save",
-        campaignContactId,
-        contact.campaign_id
-      );
+      log.debug({
+        event: "createOptOut post save",
+        contactId: campaignContactId,
+        campaignId: contact.campaign_id,
+      });
 
       const newContact = cacheableData.campaignContact.updateCacheForOptOut(
         contact

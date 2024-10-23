@@ -11,7 +11,6 @@ import passport from "passport";
 import cookieSession from "cookie-session";
 import passportSetup from "./auth-passport";
 import { log } from "../lib";
-import telemetry from "./telemetry";
 import { addServerEndpoints as messagingServicesAddServerEndpoints } from "../extensions/service-vendors/service_map";
 import { getConfig } from "./api/lib/config";
 import { seedZipCodes } from "./seeds/seed-zip-codes";
@@ -26,6 +25,7 @@ import http from "http";
 import cors from "cors";
 import { SpokeError } from "./api/errors";
 import { unwrapResolverError } from '@apollo/server/errors';
+import { ApolloErrorLogger } from "./error-log";
 
 process.on("uncaughtException", ex => {
   log.error(ex);
@@ -70,17 +70,11 @@ const server = new ApolloServer({
   schema: executableSchema,
   resolvers,
   introspection: true,
-  plugins: [ApolloServerPluginDrainHttpServer({ httpServer })],
+  plugins: [
+    ApolloServerPluginDrainHttpServer({ httpServer }),
+    ApolloErrorLogger,
+  ],
   formatError: (formattedError, error) => {
-    log.error({
-      // TODO: request is no longer available in formatError, figure out
-      // another way to do this.
-      // userId: request.user && request.user.id,
-      code: error?.extensions?.code ?? 'INTERNAL_SERVER_ERROR',
-      error: formattedError,
-      msg: "GraphQL error"
-    });
-
     if (process.env.SHOW_SERVER_ERROR || process.env.DEBUG) {
       return formattedError;
     }

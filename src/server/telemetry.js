@@ -1,10 +1,11 @@
 import moment from "moment";
 import { CloudWatch } from "@aws-sdk/client-cloudwatch";
 import { CloudWatchEvents } from "@aws-sdk/client-cloudwatch-events";
-import { log } from "../lib";
+import { log as logger } from "../lib";
 import { getConfig } from "./api/lib/config";
 import _ from "lodash";
 
+const log = logger.child({category: "telemetry"});
 const stage = getConfig("STAGE") || "local";
 const functionName = process.env.AWS_LAMBDA_FUNCTION_NAME || "NOT_SET";
 
@@ -63,10 +64,10 @@ if (getConfig("ENABLE_CLOUDWATCH_REPORTING", null, { truthy: 1 })) {
     const payload = makeCloudwatchErrorEvent(err, details);
     try {
       await cloudwatchEventsClient.putEvents(payload);
-    } catch (e) {
+    } catch (err) {
       log.error({
         msg: "Error posting exception to Cloudwatch:",
-        error: e,
+        err,
         payload
       });
     }
@@ -90,14 +91,14 @@ if (getConfig("ENABLE_CLOUDWATCH_REPORTING", null, { truthy: 1 })) {
         };
         await cloudwatchMetricsClient.putMetricData(metricData);
       }
-    } catch (e) {
+    } catch (err) {
       log.error({
         msg: "Error posting event to Cloudwatch:",
-        error: e,
+        err,
         payload
       });
     }
-    console.log("telemetry.reportEvent", detailType, details);
+    log.info({event: "reportEvent", detailType, details});
   });
 
   expressMiddlewareCallbacks.push(async (err, req) => {
@@ -105,7 +106,7 @@ if (getConfig("ENABLE_CLOUDWATCH_REPORTING", null, { truthy: 1 })) {
       cloudwatchEventsClient.putEvents(
         makeCloudwatchErrorEvent(err),
         awsErr => {
-          log.error("Error posting exception to Cloudwatch:", awsErr);
+          log.error(awsErr, "Error posting exception to Cloudwatch:");
           resolve();
         }
       );
@@ -140,10 +141,10 @@ if (getConfig("ENABLE_CLOUDWATCH_REPORTING", null, { truthy: 1 })) {
         };
         await cloudwatchMetricsClient.putMetricData(metricData);
       }
-    } catch (e) {
+    } catch (err) {
       log.error({
         msg: "Error posting exception to Cloudwatch:",
-        error: e,
+        err,
         payload
       });
     }
@@ -173,8 +174,8 @@ async function reportError(err, details) {
 
 async function formatRequestError(err, req) {
   let code = "UNKNOWN";
-  if (err.originalError) {
-    code = err.originalError.code || "INTERNAL_SERVER_ERROR";
+  if (err.extensions) {
+    code = err.extensions.code || "INTERNAL_SERVER_ERROR";
   }
   err.code = code;
   await Promise.all(formatRequestErrorCallbacks.map(cb => cb(err, req)));

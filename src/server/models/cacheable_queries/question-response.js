@@ -1,4 +1,5 @@
 import { r } from "../../models";
+import { log } from "../../../lib";
 
 /*
 KEY: qresponse-<campaignContactId>
@@ -29,7 +30,6 @@ const loadToCache = async campaignContactId => {
 
 const questionResponseCache = {
   query: async (campaignContactId, minimalObj) => {
-    // console.log('query questionresponse cache', campaignContactId)
     // For now, minimalObj is always being invoked as true in
     // server/api/campaign-contact
     if (r.redis && CONTACT_CACHE_ENABLED && minimalObj) {
@@ -42,7 +42,6 @@ const questionResponseCache = {
     return await loadToCache(campaignContactId);
   },
   clearQuery: async campaignContactId => {
-    // console.log('clearing questionresponse cache', campaignContactId)
     if (r.redis) {
       await r.redis.DEL(responseCacheKey(campaignContactId));
     }
@@ -120,9 +119,8 @@ const questionResponseCache = {
           }
           await trx.commit();
         });
-      } catch (error) {
-        // eslint-disable-next-line no-console
-        console.log("questionResponse cache transaction error", error);
+      } catch (err) {
+        log.error({category: "question-response-cache", err}, "questionResponse cache transaction error");
       }
     }
     if (r.redis && CONTACT_CACHE_ENABLED) {

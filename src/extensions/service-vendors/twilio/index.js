@@ -1,9 +1,9 @@
-/* eslint-disable no-use-before-define, no-console */
+/* eslint-disable no-use-before-define */
 import _ from "lodash";
 import Twilio, { twiml } from "twilio";
 import { format as formatUrl } from "url";
 import { join as joinPath } from "path";
-import { log } from "../../../lib";
+import { log as logger } from "../../../lib";
 import { getFormattedPhoneNumber } from "../../../lib/phone-format";
 import {
   getConfig,
@@ -22,6 +22,8 @@ import { getSecret, convertSecret } from "../../secret-manager";
 
 import { saveNewIncomingMessage, parseMessageText } from "../message-sending";
 import { getMessageServiceConfig, getConfigKey } from "../service_map";
+
+const log = logger.child({category: "twilio"});
 
 // TWILIO error_codes:
 // > 1 (i.e. positive) error_codes are reserved for Twilio error codes
@@ -271,10 +273,12 @@ export async function sendMessage({
   );
   const APITEST = /twilioapitest/.test(message.text);
   if (!twilio && !APITEST) {
-    log.warn(
-      "cannot actually send SMS message -- twilio is not fully configured:",
-      message.id
-    );
+    log.warn({
+      event: "sendMessage",
+      orgId: organization.id,
+      campaignId: campaign?.id,
+      messageId: message.id
+    }, "cannot actually send SMS message -- twilio is not fully configured");
     if (message.id) {
       let updateQuery = r
         .knex("message")
@@ -299,7 +303,7 @@ export async function sendMessage({
 
   return new Promise((resolve, reject) => {
     if (message.service !== "twilio") {
-      log.warn("Message not marked as a twilio message", message.id);
+      log.warn({event: "sendMessage", messageId: message.id}, "Message not marked as a twilio message");
     }
 
     let twilioValidityPeriod = process.env.TWILIO_MESSAGE_VALIDITY_PERIOD;
@@ -367,7 +371,12 @@ export async function sendMessage({
       additionalMessageParams
     );
 
-    console.log("twilioMessage", messageParams);
+    log.info({
+      event: "sendMessage",
+      orgId: organization.id,
+      camapignId: campaign?.id,
+      message: messageParams,
+    });
     if (APITEST) {
       let fakeErr = null;
       let fakeResponse = null;
@@ -427,12 +436,11 @@ export function postMessageSend(
         ...changes
       }
     : {};
-  log.info("postMessageSend", message, changes, response, err);
+  log.debug({event: "postMessageSend", message, changes, response, err});
   let hasError = false;
   if (err) {
     hasError = true;
-    log.error("Error sending message", err);
-    console.log("Error sending message", err);
+    log.error({event: "postMessageSend", messageId: message.id, err}, "Error sending message");
   }
   if (response) {
     changesToSave.service_id = response.sid;
@@ -472,7 +480,6 @@ export function postMessageSend(
     updateQuery = updateQuery.update(changesToSave);
 
     Promise.all([updateQuery, contactUpdateQuery]).then(() => {
-      console.log("Saved message error status", changesToSave, err);
       reject(
         err ||
           (response
@@ -502,10 +509,7 @@ export function postMessageSend(
         });
       })
       .catch(caught => {
-        console.error(
-          "Failed message and contact update on twilio postMessageSend",
-          caught
-        );
+        log.error({ event: "postMessageSend", err: caught}, "Failed message and contact update on twilio postMessageSend");
         reject(caught);
       });
   }
@@ -520,7 +524,7 @@ export async function handleDeliveryReport(report) {
     // we skip writing to the database.
     // Log just in case we need to debug something. Detailed logs can be viewed here:
     // https://www.twilio.com/log/sms/logs/<SID>
-    log.info(`Message status ${messageSid}: ${messageStatus}`);
+    log.info({ event: "handleDeliveryReport", messageSid, messageStatus });
     if (messageStatus === "queued" || messageStatus === "sent") {
       return;
     }
@@ -562,7 +566,7 @@ export async function handleIncomingMessage(message) {
     !message.hasOwnProperty("Body") ||
     !message.hasOwnProperty("MessageSid")
   ) {
-    log.error(`This is not an incoming message: ${JSON.stringify(message)}`);
+    log.error({event: "handleIncomingMessage", message}, "This is not an incoming message");
   }
 
   const { From, To, MessageSid } = message;
@@ -582,21 +586,21 @@ export async function handleIncomingMessage(message) {
     const finalMessage = await convertMessagePartsToMessage([
       pendingMessagePart
     ]);
-    console.log(
-      "Contact Reply\n", 
-      `\t| Message Status:      ${finalMessage.send_status}\n`,
-      `\t| From Contact? :      ${finalMessage.is_from_contact}\n`,
-      `\t| Contact Number:      ${finalMessage.contact_number}\n`, 
-      `\t| User Number:         ${finalMessage.user_number}\n`,
-      `\t| Text:                ${finalMessage.text.replace(/(\r\n|\n|\r)/gm, " ").substring(0, 45)}\n`,
-      `\t| Error Code:          ${finalMessage.error_code}\n`,
-      `\t| Service:             ${finalMessage.service || pendingMessagePart.service}\n`,
-      `\t| Media:               ${finalMessage.media.length === 0 ? "No media" : finalMessage.media}\n`,
-      `\t| Message Service SID: ${finalMessage.messageservice_sid}\n`,
-      `\t| Service ID:          ${finalMessage.service_id}\n`,
-      `\t| Parent ID:           ${pendingMessagePart.parent_id}\n`,
-      `\t| User ID:             ${finalMessage.user_id}`,
-    );
+    log.info({
+      event: "handleIncomingMessage",
+      messageStatus: finalMessage.send_status,
+      fromContact: finalMessage.is_from_contact,
+      contactNumber: finalMessage.contact_number,
+      userNumber: finalMessage.user_number,
+      text: finalMessage.text.replace(/(\r\n|\n|\r)/gm, " ").substring(0, 45),
+      errorCode: finalMessage.error_code,
+      service: finalMessage.service || pendingMessagePart.service,
+      media: finalMessage.media.length === 0 ? "No media" : finalMessage.media,
+      messageServiceSid: finalMessage.messageservice_sid,
+      serviceId: finalMessage.service_id,
+      parentId: pendingMessagePart.parent_id,
+      userId: finalMessage.user_id,
+    }, "Contact Reply");
     if (finalMessage) {
       if (message.spokeCreatedAt) {
         finalMessage.created_at = message.spokeCreatedAt;
@@ -681,7 +685,6 @@ export async function getContactInfo({
     if (phoneNumber.callerName) {
       contactInfo.lookup_name = phoneNumber.callerName;
     }
-    // console.log('twilio.getContactInfo', contactInfo, phoneNumber);
     return contactInfo;
   } catch (err) {
     /* oddly, very rarely Twilio returns a 404 error message
@@ -711,7 +714,7 @@ export async function getContactInfo({
  * Create a new Twilio messaging service
  */
 export async function createMessagingService(organization, friendlyName) {
-  console.log("twilio.createMessagingService", organization.id, friendlyName);
+  log.info({event: "createMessagingService", orgId: organization.id, friendlyName});
   const urlJoin = (...parts) => formatUrl({ pathname: joinPath(...parts) });
   const twilio = await exports.getTwilio(organization);
   const twilioBaseUrl =
@@ -807,7 +810,7 @@ async function buyNumber(
     throw new Error(`Error buying twilio number: ${response.error}`);
   }
 
-  log.debug(`Bought number ${phoneNumber} [${response.sid}]`);
+  log.info({event: "buyNumber", orgId: organization.id, phoneNumber, sid: response.sid});
 
   let allocationFields = {};
   let messagingServiceSid = messageServiceSid;
@@ -867,7 +870,7 @@ export async function buyNumbersInAreaCode(
   const messageServiceSid = await getMessageServiceSid(organization);
   async function buyBatch(size) {
     let successCount = 0;
-    log.debug(`Attempting to buy batch of ${size} numbers`);
+    log.debug({event: "buyNumbersInAreaCode", areaCode, size}, `Attempting to buy batch of ${size} numbers`);
 
     const response = await searchForAvailableNumbers(
       twilioInstance,
@@ -887,7 +890,12 @@ export async function buyNumbersInAreaCode(
       successCount++;
     });
 
-    log.debug(`Successfully bought ${successCount} number(s)`);
+    log.info({
+      category: "buyNumbersInAreaCode",
+      orgId: organization.id,
+      areaCode,
+      successCount,
+    }, `Successfully bought ${successCount} number(s)`);
     return successCount;
   }
 
@@ -898,7 +906,11 @@ export async function buyNumbersInAreaCode(
     const purchasedInBatch = await buyBatch(nextBatchSize);
     totalPurchased += purchasedInBatch;
     if (purchasedInBatch === 0) {
-      log.warn("Failed to buy as many numbers as requested");
+      log.warn({
+        category: "buyNumbersInAreaCode",
+        orgId: organization.id,
+        areaCode
+      }, "Failed to buy as many numbers as requested");
       break;
     }
   }
@@ -930,14 +942,16 @@ async function deleteNumber(twilioInstance, phoneSid, phoneNumber) {
       // safe to delete from Spoke inventory. Otherwise, throw error and
       // don't delete from Spoke.
       if (err.code === 20404) {
-        log.error(
-          `Number not found in Twilio, may have already been released: ${phoneNumber} [${phoneSid}]`
-        );
+        log.warn({
+          event: "deleteNumber",
+          phoneNumber,
+          phoneSid
+        }, "Number not found in Twilio, may have already been released");
       } else {
         throw new Error(`Error deleting twilio number: ${err}`);
       }
     });
-  log.debug(`Deleted number ${phoneNumber} [${phoneSid}]`);
+  log.debug({event: "deleteNumber", phoneNumber, phoneSid}, "Deleted number");
   return await r
     .knex("owned_phone_number")
     .del()
@@ -968,7 +982,7 @@ export async function deleteNumbersInAreaCode(organization, areaCode) {
     await deleteNumber(twilioInstance, n.service_id, n.phone_number);
     successCount++;
   }
-  log.debug(`Successfully deleted ${successCount} number(s)`);
+  log.debug({event: "deleteNumbersInAreaCode", successCount}, `Successfully deleted ${successCount} number(s)`);
   return successCount;
 }
 
@@ -977,7 +991,7 @@ export async function deleteMessagingService(
   messagingServiceSid
 ) {
   const twilioInstance = await exports.getTwilio(organization);
-  console.log("Deleting messaging service", messagingServiceSid);
+  log.info({event: "deleteMessagingService", orgId: organization.id, messagingServiceSid}, "Deleting messaging service");
   return twilioInstance.messaging.services(messagingServiceSid).remove();
 }
 
@@ -986,7 +1000,7 @@ export async function clearMessagingServicePhones(
   messagingServiceSid
 ) {
   const twilioInstance = await exports.getTwilio(organization);
-  console.log("Deleting phones from messaging service", messagingServiceSid);
+  log.info({event: "clearMessagingServicePhones", orgId: organization.id, messagingServiceSid}, "Deleting phones from messaging service");
 
   const phones = await twilioInstance.messaging
     .services(messagingServiceSid)
@@ -1152,7 +1166,7 @@ export const updateConfig = async (
       await twilio.api.accounts.list();
     }
   } catch (err) {
-    console.log("twilio.updateConfig client error", err);
+    log.error({event: "updateConfig", err}, "Invalid Twilio credentials");
     throw new Error("Invalid Twilio credentials");
   }
 

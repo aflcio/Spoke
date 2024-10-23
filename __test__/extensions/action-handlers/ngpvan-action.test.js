@@ -3,6 +3,7 @@ import {
   validateActionHandlerWithClientChoices
 } from "../../../src/extensions/action-handlers";
 import nock from "nock";
+import { vanLog as log } from "../../../src/extensions/action-handlers/ngpvan-action";
 
 const NgpVanAction = require("../../../src/extensions/action-handlers/ngpvan-action");
 require("../../test_helpers");
@@ -1160,7 +1161,7 @@ describe("ngpvn-action", () => {
 
     describe("when custom_fields fails to parse", () => {
       beforeEach(async () => {
-        jest.spyOn(console, "error");
+        jest.spyOn(log, "error");
         contact = {
           id: 3,
           custom_fields: "won't parse"
@@ -1174,9 +1175,14 @@ describe("ngpvn-action", () => {
           body
         );
 
-        // eslint-disable-next-line no-console
-        expect(console.error.mock.calls).toEqual([
-          [expect.stringMatching(/Error parsing custom_fields for contact 3.*/)]
+        expect(log.error.mock.calls).toEqual([
+          [
+            expect.objectContaining({
+              event: "postCanvassResponse",
+              contactId: 3
+            }),
+            expect.stringMatching('Error parsing custom_fields for contact')
+          ]
         ]);
         expect(result).toEqual({});
       });
@@ -1184,7 +1190,7 @@ describe("ngpvn-action", () => {
 
     describe("when custom_fields doesn't have VanID", () => {
       beforeEach(async () => {
-        jest.spyOn(console, "error");
+        jest.spyOn(log, "error");
         contact = {
           id: 3,
           custom_fields: "{}"
@@ -1198,10 +1204,13 @@ describe("ngpvn-action", () => {
           body
         );
 
-        // eslint-disable-next-line no-console
-        expect(console.error.mock.calls).toEqual([
+        expect(log.error.mock.calls).toEqual([
           [
-            "Cannot sync results to van for campaign_contact 3. No VanID in custom fields"
+            expect.objectContaining({
+              event: "postCanvassResponse",
+              contactId: 3
+            }),
+            expect.stringMatching('Cannot sync results to van for campaign_contact. No VanID in custom fields')
           ]
         ]);
         expect(result).toEqual({});

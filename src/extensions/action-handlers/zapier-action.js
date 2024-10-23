@@ -1,9 +1,11 @@
 import { getConfig } from "../../server/api/lib/config";
-import { log } from "../../lib";
+import { log as logger } from "../../lib";
 
 import httpRequest from "../../server/lib/http-request.js";
 
 export const name = "zapier-action";
+const log = logger.child({category: "zapier-action" });
+export { log as zapierLog };
 
 // What the user sees as the option
 export const displayName = () => "ZAPIER";
@@ -43,7 +45,7 @@ export async function onTagUpdate(
 ) {
   const url = getConfig("ZAPIER_WEBHOOK_URL", organization);
   if (!url) {
-    log.info("ZAPIER_WEBHOOK_URL is undefined. Exiting.");
+    log.warn({ event: 'onTagUpdate' }, "ZAPIER_WEBHOOK_URL is undefined. Exiting.");
     return;
   }
 
@@ -65,7 +67,11 @@ export async function onTagUpdate(
 
   const stringifiedPayload = JSON.stringify(payload);
 
-  console.info(`Zapier onTagUpdate sending ${stringifiedPayload} to ${url}`);
+  log.debug({
+    event: 'onTagUpdate',
+    url,
+    payload
+  }, "Zapier onTagUpdate sending");
 
   return httpRequest(url, {
     method: "POST",
@@ -94,16 +100,14 @@ export async function processAction({
   try {
     const url = getConfig("ZAPIER_ACTION_URL", organization);
     if (!url) {
-      log.info("ZAPIER_ACTION_URL is undefined. Exiting.");
+      log.warn({event: "processAction" }, "ZAPIER_ACTION_URL is undefined. Exiting.");
       return;
     }
     const config = JSON.parse(
       getConfig("ZAPIER_CONFIG_OBJECT", organization) || "{}"
     );
     if (!config) {
-      log.info(
-        `ZAPIER_CONFIG_OBJECT is undefined. All payloads will go to ${url}`
-      );
+      log.info({ event: "processAction" }, `ZAPIER_CONFIG_OBJECT is undefined. All payloads will go to ${url}`);
     }
 
     const baseUrl = getConfig("BASE_URL", organization);
@@ -125,7 +129,7 @@ export async function processAction({
     const stringifiedPayload = JSON.stringify(payload);
 
     const zap_timeout = getConfig("ZAPIER_TIMEOUT_MS", organization) || 5000;
-    log.info(`Zapier timeout: ${zap_timeout}`);
+    log.debug(`Zapier timeout: ${zap_timeout}`);
 
     let final_url = "";
     const answer_option = interactionStep.answer_option;
@@ -143,9 +147,9 @@ export async function processAction({
           }
         }
         if (final_url === "") {
-          log.info(
-            `Did not find "${answer_option}" in ZAPIER_CONFIG_OBJECT. Using default URL from ZAPIER_WEBHOOK_URL (${url}).`
-          );
+          log.info({
+            event: 'processAction',
+          }, `Did not find "${answer_option}" in ZAPIER_CONFIG_OBJECT. Using default URL from ZAPIER_WEBHOOK_URL (${url}).`);
           final_url = url;
         }
       } else {
@@ -155,7 +159,7 @@ export async function processAction({
       final_url = url;
     }
 
-    log.info(`Zapier processAction sending ${answer_option} to ${final_url}`);
+    log.info({event: "processAction" }, `Zapier processAction sending ${answer_option} to ${final_url}`);
 
     return httpRequest(final_url, {
       method: "POST",
@@ -169,7 +173,7 @@ export async function processAction({
       compress: false
     });
   } catch (caughtError) {
-    log.error("Encountered exception in zapier.processAction", caughtError);
+    log.error({event: "processAction", err: caughtError});
     throw caughtError;
   }
 }
@@ -187,6 +191,7 @@ export async function available(organization) {
 
   if (!result) {
     log.info(
+      { event: "available" },
       "zapier-action unavailable. Missing one or more of the required environment variables"
     );
   }

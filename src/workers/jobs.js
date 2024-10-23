@@ -8,7 +8,7 @@ import {
   UserOrganization
 } from "../server/models";
 import telemetry from "../server/telemetry";
-import { log, gunzip, zipToTimeZone, convertOffsetsToStrings } from "../lib";
+import { log as logger, gunzip, zipToTimeZone, convertOffsetsToStrings } from "../lib";
 import { sleep, updateJob } from "./lib";
 import {
   getServiceFromOrganization,
@@ -48,8 +48,13 @@ import { jobRunner } from "../extensions/job-runners";
 import fs from "fs";
 import path from "path";
 
+const log = logger.child({ category: "job" });
+
 const defensivelyDeleteOldJobsForCampaignJobType = async job => {
-  console.log("job", job);
+  log.info({
+    event: 'defensivelyDeleteOldJobsForCampaignJobType',
+    job
+  });
   let retries = 0;
   const doDelete = async () => {
     try {
@@ -62,8 +67,12 @@ const defensivelyDeleteOldJobsForCampaignJobType = async job => {
       if (retries < 5) {
         retries += 1;
         await doDelete();
-      } else
-        console.error(`Could not delete campaign/jobType. Err: ${err.message}`);
+      } else {
+        log.error({
+          event: 'defensivelyDeleteOldJobsForCampaignJobType',
+          err
+        }, 'Could not delete campaign/jobType');
+      }
     }
   };
 
@@ -83,7 +92,12 @@ const defensivelyDeleteJob = async job => {
         if (retries < 5) {
           retries += 1;
           await deleteJob();
-        } else console.error(`Could not delete job. Err: ${err.message}`);
+        } else {
+          log.error({
+            event: 'defensivelyDeleteJob',
+            err
+          }, 'Could not delete job');
+        }
       }
     };
 
@@ -131,20 +145,26 @@ export async function getTimezoneByZip(zip) {
 export async function sendJobToAWSLambda(job) {
   // job needs to be json-serializable
   // requires a 'command' key which should map to a function in job-processes.js
-  console.log(
-    "LAMBDA INVOCATION STARTING",
+  log.info({
+    event: 'sendJobToAWSLambda',
     job,
-    process.env.AWS_LAMBDA_FUNCTION_NAME
-  );
+    functionName: process.env.AWS_LAMBDA_FUNCTION_NAME
+  }, 'LAMBDA INVOCATION STARTING');
 
   if (!job.command) {
-    console.log("LAMBDA INVOCATION FAILED: JOB NOT INVOKABLE", job);
+    log.error({
+      event: 'sendJobToAWSLambda',
+      job
+    }, "LAMBDA INVOCATION FAILED: JOB NOT INVOKABLE");
     return Promise.reject("Job type not available in job-processes");
   }
   const lambda = new Lambda();
   const lambdaPayload = JSON.stringify(job);
   if (lambdaPayload.length > 128000) {
-    console.log("LAMBDA INVOCATION FAILED PAYLOAD TOO LARGE");
+    log.error({
+      event: 'sendJobToAWSLambda',
+      job
+    }, "LAMBDA INVOCATION FAILED PAYLOAD TOO LARGE");
     return Promise.reject("Payload too large");
   }
 
@@ -157,14 +177,21 @@ export async function sendJobToAWSLambda(job) {
       },
       (err, data) => {
         if (err) {
-          console.log("LAMBDA INVOCATION FAILED", err, job);
+          log.error({
+            event: 'sendJobToAWSLambda',
+            job,
+            err
+          }, "LAMBDA INVOCATION FAILED");
           reject(err);
         } else {
           resolve(data);
         }
       }
     );
-    console.log("LAMBDA INVOCATION RESULT", result);
+    log.info({
+      event: 'sendJobToAWSLambda',
+      result
+    }, "LAMBDA INVOCATION RESULT");
   });
   return p;
 }
@@ -194,7 +221,7 @@ export async function processSqsMessages(TWILIO_SQS_QUEUE_URL) {
   const p = new Promise((resolve, reject) => {
     sqs.receiveMessage(params, async (err, data) => {
       if (err) {
-        console.log("processSqsMessages Error", err, err.stack);
+        log.error({event: 'processSqsMessages', err});
         reject(err);
       } else {
         if (!data.Messages || !data.Messages.length) {
@@ -202,13 +229,11 @@ export async function processSqsMessages(TWILIO_SQS_QUEUE_URL) {
           await sleep(10000);
           resolve();
         } else {
-          console.log("processSqsMessages", data.Messages.length);
+          log.info({event: 'processSqsMessages', count: data.Messages.length});
           for (let i = 0; i < data.Messages.length; i++) {
             const message = data.Messages[i];
             const body = message.Body;
-            if (process.env.DEBUG) {
-              console.log("processSqsMessages message body", body);
-            }
+            log.debug({event: 'processSqsMessages', body});
             const twilioMessage = JSON.parse(body);
             await getService("twilio").handleIncomingMessage(twilioMessage);
             const delMessageData = await sqs
@@ -217,9 +242,7 @@ export async function processSqsMessages(TWILIO_SQS_QUEUE_URL) {
                 ReceiptHandle: message.ReceiptHandle
               })
               .catch(reject);
-            if (process.env.DEBUG) {
-              console.log("processSqsMessages deleteresult", delMessageData);
-            }
+            log.debug({event: 'processSqsMessages', delMessageData});
           }
           resolve();
         }
@@ -236,10 +259,10 @@ export async function dispatchContactIngestLoad(job, organization) {
   }
   const ingestMethod = rawIngestMethod(job.job_type.replace("ingest.", ""));
   if (!ingestMethod) {
-    console.error(
-      "dispatchContactIngestLoad not found. invalid job type",
-      job.job_type
-    );
+    log.error({
+      event: 'dispatchContactIngestLoad',
+      jobType: job.job_type
+    }, 'dispatchContactIngestLoad not found. invalid job type');
     return;
   }
   const orgFeatures = JSON.parse(organization.features || "{}");
@@ -301,7 +324,7 @@ export async function completeContactLoad(
 
   let deleteOptOutCells = null;
   let deleteDuplicateCells = null;
-  console.log("completeContactLoad", campaignId, job.id);
+  log.info({event: 'completeContactLoad', campaignId, jobId: job.id});
   const knexOptOutDeleteResult = await r
     .knex("campaign_contact")
     .whereIn("cell", getOptOutSubQuery(campaign.organization_id))
@@ -309,10 +332,10 @@ export async function completeContactLoad(
     .delete()
     .then(result => {
       deleteOptOutCells = result;
-      console.log("Deleted opt-outs: " + deleteOptOutCells);
+      log.info({event: 'completeContactLoad', deleteOptOutCells}, 'Deleted opt-outs');
     })
     .catch(err => {
-      console.log("Error deleting opt-outs:", campaignId, err);
+      log.error({event: 'completeContactLoad', campaignId, err}, 'Error deleting opt-outs');
     });
 
   // delete duplicate cells (last wins)
@@ -330,11 +353,11 @@ export async function completeContactLoad(
     .delete()
     .then(result => {
       deleteDuplicateCells = result;
-      console.log("Deduplication result", campaignId, result);
+      log.info({event: 'completeContactLoad', campaignId, result}, 'Deduplication result');
     })
     .catch(err => {
       deleteDuplicateCells = -1;
-      console.error("Failed deduplication", campaignId, err);
+      log.error({event: 'completeContactLoad', campaignId, err}, 'Failed deduplication');
     });
 
   const finalContactCount = await r.getCount(
@@ -384,14 +407,14 @@ export async function completeContactLoad(
       }
     });
   }
-  console.log(
-    "completeContactLoad completed",
+  log.info({
+    event: 'completeContactLoad',
     campaignId,
-    job.id,
+    jobId: job.id,
     finalContactCount,
     deleteOptOutCells,
     deleteDuplicateCells
-  );
+  }, "completeContactLoad completed");
 }
 
 export async function unzipPayload(job) {
@@ -477,7 +500,13 @@ export async function assignTexters(job) {
 
   const payload = JSON.parse(job.payload);
   const cid = job.campaign_id;
-  console.log("assignTexters1", cid, payload);
+  const log = logger.child({
+    cateory: "job",
+    jobType: "assignTexters",
+    orgId: job?.organization?.id,
+    campaignId: cid,
+  });
+  log.info({ payload }, "assignTexters1");
   const campaign = (await r.knex("campaign").where({ id: cid }))[0];
   const texters = payload.texters;
   const currentAssignments = await r
@@ -687,7 +716,7 @@ export async function assignTexters(job) {
   }
 
   if (campaign.is_started) {
-    console.log("assignTexterscache1", job.campaign_id);
+    log.info({campaignId: job.campaign_id}, 'assignTexterscache1');
     await cacheableData.campaignContact.updateCampaignAssignmentCache(
       job.campaign_id
     );
@@ -702,7 +731,6 @@ export async function assignTexters(job) {
 }
 
 export async function exportCampaign(job) {
-  console.log("exportingCampaign", job);
   const payload = JSON.parse(job.payload);
   const id = job.campaign_id;
   const campaign = await Campaign.get(id);
@@ -711,6 +739,15 @@ export async function exportCampaign(job) {
   const user = await User.get(requester);
   const allQuestions = {};
   const questionCount = {};
+
+  log.info({
+    event: 'exportCampaign',
+    orgId: organization.id,
+    campaignId: id,
+    userId: user.id,
+    job
+  }, 'Export requested');
+
   const interactionSteps = await r
     .table("interaction_step")
     .getAll(id, { index: "campaign_id" });
@@ -862,7 +899,11 @@ export async function exportCampaign(job) {
   const campaignCsv = Papa.unparse(contacts);
   const messageCsv = Papa.unparse(messages);
   const exportResults = {};
-  console.log("exportCampaign csvs", campaignCsv.length, messageCsv.length);
+  log.info({
+    event: 'exportCampaign',
+    campaignCsvCount: campaignCsv.length,
+    messageCsvCount: messageCsv.length,
+  });
   if (
     getConfig("AWS_ACCESS_AVAILABLE") ||
     (process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY)
@@ -880,12 +921,14 @@ export async function exportCampaign(job) {
         });
         await client.send(verifyBucketCommand);
 
-        console.log(`S3 bucket "${bucketName}" already exists.`);
+        log.info({
+          event: 'exportCampaign',
+        }, `S3 bucket "${bucketName}" already exists.`);
       } catch (error) {
         if (error.name === "NotFound") {
-          console.log(
-            `S3 bucket "${bucketName}" not found. Creating a new bucket.`
-          );
+          log.info({
+            event: 'exportCampaign',
+          }, `S3 bucket "${bucketName}" not found. Creating a new bucket.`);
 
           try {
             // Create the S3 bucket
@@ -894,15 +937,20 @@ export async function exportCampaign(job) {
             });
             await client.send(createBucketCommand);
 
-            console.log(`S3 bucket "${bucketName}" created successfully.`);
+            log.info({
+              event: 'exportCampaign',
+            }, `S3 bucket "${bucketName}" created successfully.`);
           } catch (createError) {
-            console.error(
-              `Error creating bucket "${bucketName}":`,
-              createError
-            );
+            log.error({
+              event: 'exportCampaign',
+              err: createError,
+            }, `Error creating bucket "${bucketName}`);
           }
         } else {
-          console.error("Error checking bucket existence:", error);
+          log.error({
+            event: 'exportCampaign',
+            err: error,
+          }, "Error checking bucket existence");
         }
       }
 
@@ -920,19 +968,19 @@ export async function exportCampaign(job) {
         "YYYY-MM-DD-HH-mm-ss"
       )}.csv`;
       const messageKey = `${key}-messages.csv`;
-      let params = { Key: key, 
-                     Body: campaignCsv, 
+      let params = { Key: key,
+                     Body: campaignCsv,
                      Bucket: bucketName };
       await client.send(new PutObjectCommand(params));
-      params = { Key: key, 
-                 Expires: 86400, 
+      params = { Key: key,
+                 Expires: 86400,
                  Bucket: bucketName };
       const campaignExportUrl = await getSignedUrl(client, new GetObjectCommand(params));
-      params = { Key: messageKey, 
-                 Body: messageCsv, 
+      params = { Key: messageKey,
+                 Body: messageCsv,
                  Bucket: bucketName };
       await client.send(new PutObjectCommand(params));
-      params = { Key: messageKey, 
+      params = { Key: messageKey,
                  Expires: 86400,
                  Bucket: bucketName };
       const campaignMessagesExportUrl = await getSignedUrl(client, new GetObjectCommand(params));
@@ -962,14 +1010,17 @@ export async function exportCampaign(job) {
           Campaign export: ${campaignExportUrl}
           Message export: ${campaignMessagesExportUrl}`
         }).catch(err => {
-          log.error(err);
-          log.info(`Campaign Export URL - ${campaignExportUrl}`);
-          log.info(`Campaign Messages Export URL - ${campaignMessagesExportUrl}`);
+          log.error({
+            event: 'exportCampaign',
+            campaignExportUrl,
+            campaignMessagesExportUrl,
+            err
+          })
         });
-        log.info(`Successfully exported ${id}`);
+        log.info({event: 'exportCampaign'}, `Successfully exported ${id}`);
       }
     } catch (err) {
-      log.error(err);
+      log.error({event: 'exportCampaign', err});
       exportResults.error = err.message;
       await sendEmail({
         to: user.email,
@@ -986,13 +1037,11 @@ export async function exportCampaign(job) {
     exportResults.campaignMessagesExportUrl =
       "file://" + path.resolve("./", messagesFile);
 
-    console.log(`Writing CSVs to ${contactsFile} and ${messagesFile}`);
+    log.info(`Writing CSVs to ${contactsFile} and ${messagesFile}`);
     fs.writeFileSync(contactsFile, campaignCsv);
     fs.writeFileSync(messagesFile, messageCsv);
   } else {
-    console.log("Would have saved the following to S3:");
-    log.debug(campaignCsv);
-    log.debug(messageCsv);
+    log.debug({event: 'exportCampaign', campaignCsv, messageCsv}, "Would have saved the following to S3:");
   }
   if (exportResults.campaignExportUrl || exportResults.error) {
     exportResults.createdAt = String(new Date());
@@ -1034,11 +1083,11 @@ export async function startCampaign(job) {
   );
 
   if (serviceManagerData && serviceManagerData.blockCampaignStart) {
-    console.log(
-      "campaign blocked from starting",
-      campaign.id,
-      serviceManagerData.blockCampaignStart
-    );
+    log.info({
+      event: 'startCampaign',
+      campaignId: campaign.id,
+      blockCampaignStart: serviceManagerData.blockCampaignStart
+    }, "campaign blocked from starting");
     return;
   }
 
@@ -1073,7 +1122,11 @@ export async function startCampaign(job) {
       .where("campaign_contact.campaign_id", campaign.id)
   );
   if (updateOptOuts) {
-    console.log("campaign start updated is_opted_out", updateOptOuts);
+    log.info({
+      event: 'startCampaign',
+      campaignId: campaign.id,
+      updateOptOuts
+    }, "campaign start updated is_opted_out");
   }
   // We delete the job before invoking this task in case this process times out.
   // TODO: Decide if we want/need this anymore, relying on FUTURE campaign-contact cache load changes
@@ -1088,13 +1141,17 @@ export async function importScript(job) {
   try {
     await defensivelyDeleteOldJobsForCampaignJobType(job);
     await importScriptFromDocument(payload.campaignId, payload.url); // TODO try/catch
-    console.log(`Script import complete ${payload.campaignId} ${payload.url}`);
+    log.info({
+      event: 'importScript',
+      campaignId: payload.campaignId,
+      url: payload.url
+    }, 'Script import complete');
   } catch (exception) {
     await r
       .knex("job_request")
       .where("id", job.id)
       .update({ result_message: exception.message, status: -1 });
-    console.warn(exception.message);
+      log.warn({event: 'importScript', err: exception});
     return;
   }
   defensivelyDeleteJob(job);
@@ -1137,7 +1194,7 @@ export async function sendMessages(queryFunc, defaultStatus) {
     } catch (err) {
       // Unable to obtain lock on these rows meaning another process must be
       // sending them. We will exit gracefully in that case.
-      console.info("LOCKED ROWS", err);
+      log.error({event: 'sendMessages', err}, "LOCKED ROWS");
       trx.rollback();
       return 0;
     }
@@ -1181,18 +1238,17 @@ export async function sendMessages(queryFunc, defaultStatus) {
           pastMessages.push(message.id);
           pastMessages = pastMessages.slice(-100); // keep the last 100
         } catch (err) {
-          console.error("Failed sendMessage", err);
+          log.error({event: 'sendMessages', err}, "Failed sendMessage");
         }
         trySendCount += 1;
       }
       await trx.commit();
     } catch (err) {
-      console.error("Error sending messages:", err);
+      log.error({event: 'sendMessages', err}, "Error sending messages");
       await trx.rollback();
     }
   } catch (err) {
-    console.log("sendMessages transaction errored:");
-    console.error(err);
+    log.error({event: 'sendMessages', err}, "sendMessages transaction errored");
   }
   return trySendCount;
 }
@@ -1316,8 +1372,7 @@ export async function loadMessages(csvFile) {
       header: true,
       complete: ({ data, meta, errors }, file) => {
         const fields = meta.fields;
-        console.log("FIELDS", fields);
-        console.log("FIRST LINE", data[0]);
+        log.info({event: 'loadMessages', field, firstLine: data[0]});
         const promises = [];
         data.forEach(row => {
           if (!row.contact_number) {
@@ -1336,14 +1391,14 @@ export async function loadMessages(csvFile) {
             getService("twilio").handleIncomingMessage(twilioMessage)
           );
         });
-        console.log("Started all promises for CSV");
+        log.info({event: 'loadMessages'}, "Started all promises for CSV");
         Promise.all(promises)
           .then(doneDid => {
-            console.log(`Processed ${doneDid.length} rows for CSV`);
+            log.info({event: 'loadMessages'}, `Processed ${doneDid.length} rows for CSV`);
             resolve(doneDid);
           })
           .catch(err => {
-            console.error("Error processing for CSV", err);
+            log.err({event: 'loadMessages', err}, "Error processing for CSV");
             reject(err);
           });
       }
@@ -1368,14 +1423,13 @@ export async function fixOrgless() {
         role: "TEXTER"
       }).error(function(error) {
         // Unexpected errors
-        console.log("error on userOrganization save in orgless", error);
+        log.error(error, "error on userOrganization save in orgless");
       });
-      console.log(
-        "added orgless user " +
-          orglessUser.id +
-          " to organization " +
-          process.env.DEFAULT_ORG
-      );
+      log.info({
+        event: 'fixOrgless',
+        userId: orglessUser.id,
+        orgId: process.env.DEFAULT_ORG
+      }, 'added orgless user to organization');
     }); // forEach
   } // if
 } // function
@@ -1411,16 +1465,20 @@ export async function buyPhoneNumbers(job) {
       limit,
       opts
     );
-    log.info(`Bought ${totalPurchased} number(s)`, {
+    log.info({
+      event: 'buyPhoneNumbers',
       status: "COMPLETE",
       areaCode,
       limit,
       totalPurchased,
-      organization_id: job.organization_id
-    });
+      orgId: job.organization_id
+    }, `Bought ${totalPurchased} number(s)`);
   } catch (err) {
-    log.error(`JOB ${job.id} FAILED: ${err.message}`, err);
-    console.log("full job error", err);
+    log.error({
+      event: 'buyPhoneNumbers',
+      jobId: job.id,
+      err
+    }, 'JOB FAILED');
   } finally {
     await defensivelyDeleteJob(job);
   }
@@ -1443,14 +1501,19 @@ export async function deletePhoneNumbers(job) {
       organization,
       areaCode
     );
-    log.info(`Deleted ${totalDeleted} number(s)`, {
+    log.info({
+      event: 'deletePhoneNumbers',
       status: "COMPLETE",
       areaCode,
       totalDeleted,
-      organization_id: job.organization_id
-    });
+      orgId: job.organization_id
+    }, `Deleted ${totalDeleted} number(s)`);
   } catch (err) {
-    log.error(`JOB ${job.id} FAILED: ${err.message}`, err);
+    log.error({
+      event: 'deletePhoneNumbers',
+      jobId: job.id,
+      err
+    }, 'JOB FAILED');
   } finally {
     await defensivelyDeleteJob(job);
   }

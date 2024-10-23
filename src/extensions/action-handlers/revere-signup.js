@@ -2,9 +2,11 @@ import request from "request";
 import { SQS } from "@aws-sdk/client-sqs";
 import { r } from "../../server/models";
 import { actionKitSignup } from "./helper-ak-sync.js";
+import { log as logger } from "../../lib/log.js";
 
 const sqs = new SQS();
 
+const log = logger.child({category: "revere-signup"});
 export const name = "revere-signup";
 
 // What the user sees as the option
@@ -81,9 +83,9 @@ export async function processAction({ campaignContactId }) {
 
     sqs.sendMessage(sqsParams, (err, data) => {
       if (err) {
-        console.log("Error sending message to queue", err);
+        log.error(err, "Error sending message to queue");
       }
-      console.log("Sent message to queue with data:", data);
+      log.info({ data }, "Sent message to queue");
     });
   } else {
     const options = {

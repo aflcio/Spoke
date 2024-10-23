@@ -7,7 +7,7 @@ import {
   setupTest,
   makeRunnableMutations
 } from "../../test_helpers";
-
+import { log } from "../../../src/lib";
 import { r } from "../../../src/server/models";
 
 import { operations as assignmentTexterOps } from "../../../src/containers/AssignmentTexterContact";
@@ -146,7 +146,7 @@ describe("mutations.updateContactTags", () => {
 
   describe("when cacheableData.tagCampaignContact.save throws an exception", () => {
     it("eats the exception and logs it", async () => {
-      jest.spyOn(console, "error");
+      jest.spyOn(log, "error");
 
       const result = await wrappedMutations.updateContactTags(
         dbExpectedTags.map(tag => ({
@@ -161,13 +161,16 @@ describe("mutations.updateContactTags", () => {
         )
       );
 
-      expect(console.error).toHaveBeenCalledTimes(1); // eslint-disable-line no-console
-      // eslint-disable-next-line no-console
-      expect(console.error.mock.calls[0][0]).toEqual(
-        expect.stringMatching(
-          /^Error saving tagCampaignContact for campaignContactID 999999.*/
-        )
-      );
+      expect(log.error).toHaveBeenCalledTimes(1);
+      expect(log.error.mock.calls).toEqual([
+        [
+          expect.objectContaining({
+            event: "updateContactTags",
+            contactId: "999999",
+          }),
+          "Error saving tagCampaignContact"
+        ]
+      ]);
     });
   });
 });
