@@ -141,6 +141,7 @@ export async function sendMessage({
     const msgLog = {
       event: "sendMessage",
       orgId: organization.id,
+      orgName: organization.name,
       campaignId: campaign?.id,
       applicationId,
       userNumber,
@@ -149,7 +150,7 @@ export async function sendMessage({
       statusCode: status,
       data,
     };
-    statusCode == 202 ? log.info(msgLog) : log.warn(msgLog);
+    status == 202 ? log.info(msgLog) : log.warn(msgLog);
     await postMessageSend({
       status,
       data,

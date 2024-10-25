@@ -4,7 +4,7 @@ import telemetry from "./telemetry";
 // Codes that should be logged as warnings instead of errors.
 const warnCodes = [
   "SENDERR_ASSIGNMENTCHANGED",
-  "SENDERR_OPTOUT",
+  "SENDERR_OPTEDOUT",
   "SENDERR_OFFHOURS",
   "DUPLICATE_REPLY_MESSAGE",
   "UNAUTHENTICATED",
