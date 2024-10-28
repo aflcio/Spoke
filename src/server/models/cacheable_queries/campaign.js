@@ -4,6 +4,7 @@ import {
   assembleAnswerOptions,
   getUsedScriptFields
 } from "../../../lib/interaction-step-helpers";
+import { errorDescription, getServiceNameFromOrganization } from "../../../extensions/service-vendors";
 import { getFeatures, getConfig } from "../../api/lib/config";
 import organizationCache from "./organization";
 import { log as logger } from "../../../lib";
@@ -32,6 +33,8 @@ const infoCacheKey = id =>
   `${process.env.CACHE_PREFIX || ""}campaigninfo-${id}`;
 const exportCampaignCacheKey = id =>
   `${process.env.CACHE_PREFIX || ""}campaignexport-${id}`;
+const statsCacheKey = id =>
+  `${process.env.CACHE_PREFIX || ""}campaignstats-${id}`;
 
 const CONTACT_CACHE_ENABLED =
   process.env.REDIS_CONTACT_CACHE || global.REDIS_CONTACT_CACHE;
@@ -76,6 +79,56 @@ const dbContactTimezones = async id =>
       .distinct("timezone_offset")
       .select()
   ).map(contact => contact.timezone_offset);
+
+const campaignStats = async campaign => {
+  if (r.redis) {
+    const data = await r.redis.GET(statsCacheKey(campaign.id));
+    if (data) {
+      return JSON.parse(data);
+    }
+  }
+  const messageCounts = await r
+    .knexReadOnly("campaign_contact")
+    .select("message.is_from_contact", r.knex.raw("count(*) as count"))
+    .join("message", "message.campaign_contact_id", "campaign_contact.id")
+    .where({"campaign_contact.campaign_id": campaign.id})
+    .groupBy("message.is_from_contact");
+  const optOutsCount = await r.getCount(
+    r
+      .knexReadOnly("campaign_contact")
+      .where({ is_opted_out: true, campaign_id: campaign.id })
+  );
+  const errorCounts = await r
+    .knexReadOnly("campaign_contact")
+    .where("campaign_id", campaign.id)
+    .whereNotNull("error_code")
+    .select("error_code", r.knex.raw("count(*) as error_count"))
+    .groupBy("error_code")
+    .orderByRaw("count(*) DESC");
+  const organization = await organizationCache.load(campaign.organization_id);
+  const data = {
+    sentMessagesCount: messageCounts[0].count,
+    receivedMessagesCount: messageCounts[1].count,
+    optOutsCount,
+    errorCounts: errorCounts.map(e => ({
+      ...errorDescription(
+        e.error_code,
+        getServiceNameFromOrganization(organization)
+      ),
+      code: String(e.error_code),
+      count: e.error_count
+    })),
+  };
+
+  if (r.redis) {
+    r.redis.MULTI()
+      .SET(statsCacheKey(campaign.id), JSON.stringify(data))
+      .EXPIRE(statsCacheKey(campaign.id), 30)
+      .exec();
+  }
+
+  return data;
+}
 
 const clear = async (id, campaign) => {
   if (r.redis) {
@@ -238,6 +291,7 @@ const campaignCache = {
   currentEditors,
   dbCustomFields,
   dbInteractionSteps,
+  campaignStats,
   completionStats: async id => {
     if (r.redis) {
       const data = await r.redis.HGETALL(infoCacheKey(id));

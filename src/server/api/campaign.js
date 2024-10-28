@@ -195,81 +195,6 @@ export const resolvers = {
       JobRequest
     )
   },
-  CampaignStats: {
-    sentMessagesCount: async (campaign, _, { user }) => {
-      await accessRequired(
-        user,
-        campaign.organization_id,
-        "SUPERVOLUNTEER",
-        true
-      );
-      return r.getCount(
-        r
-          .knexReadOnly("campaign_contact")
-          .join("message", "message.campaign_contact_id", "campaign_contact.id")
-          .where({
-            "campaign_contact.campaign_id": campaign.id,
-            "message.is_from_contact": false
-          })
-      );
-    },
-    receivedMessagesCount: async (campaign, _, { user }) => {
-      await accessRequired(
-        user,
-        campaign.organization_id,
-        "SUPERVOLUNTEER",
-        true
-      );
-      return r.getCount(
-        r
-          .knexReadOnly("campaign_contact")
-          .join("message", "message.campaign_contact_id", "campaign_contact.id")
-          .where({
-            "campaign_contact.campaign_id": campaign.id,
-            "message.is_from_contact": true
-          })
-      );
-    },
-    optOutsCount: async (campaign, _, { user }) => {
-      await accessRequired(
-        user,
-        campaign.organization_id,
-        "SUPERVOLUNTEER",
-        true
-      );
-      return await r.getCount(
-        r
-          .knexReadOnly("campaign_contact")
-          .where({ is_opted_out: true, campaign_id: campaign.id })
-      );
-    },
-    errorCounts: async (campaign, _, { user, loaders }) => {
-      await accessRequired(
-        user,
-        campaign.organization_id,
-        "SUPERVOLUNTEER",
-        true
-      );
-      const errorCounts = await r
-        .knexReadOnly("campaign_contact")
-        .where("campaign_id", campaign.id)
-        .whereNotNull("error_code")
-        .select("error_code", r.knex.raw("count(*) as error_count"))
-        .groupBy("error_code")
-        .orderByRaw("count(*) DESC");
-      const organization = await loaders.organization.load(
-        campaign.organization_id
-      );
-      return errorCounts.map(e => ({
-        ...errorDescription(
-          e.error_code,
-          getServiceNameFromOrganization(organization)
-        ),
-        code: String(e.error_code),
-        count: e.error_count
-      }));
-    }
-  },
   CampaignsReturn: {
     __resolveType(obj, context, _) {
       if (Array.isArray(obj)) {
@@ -443,7 +368,7 @@ export const resolvers = {
       return {
         // 0 should still diffrentiate from null
         assignedCount: stats.assignedCount > -1 ? stats.assignedCount : null,
-        contactsCount: campaign.contactsCount || stats.contactsCount || null,
+        contactsCount: campaign.contacts_count || stats.contactsCount || null,
         errorCount: stats.errorCount || null,
         // messagedCount won't be defined until some messages are sent
         messagedCount: stats.assignedCount ? stats.messagedCount || 0 : null,
@@ -653,8 +578,8 @@ export const resolvers = {
         true
       );
       const stats = await cacheableData.campaign.completionStats(campaign.id);
-      if (stats.assignedCount && campaign.contactsCount) {
-        return Number(campaign.contactsCount) - Number(stats.assignedCount) > 0;
+      if (stats.assignedCount && campaign.contacts_count) {
+        return Number(campaign.contacts_count) - Number(stats.assignedCount) > 0;
       }
       const contacts = await r
         .knexReadOnly("campaign_contact")
@@ -671,8 +596,8 @@ export const resolvers = {
         true
       );
       const stats = await cacheableData.campaign.completionStats(campaign.id);
-      if (stats.messagedCount && campaign.contactsCount) {
-        return Number(campaign.contactsCount) - Number(stats.messagedCount) > 0;
+      if (stats.messagedCount && campaign.contacts_count) {
+        return Number(campaign.contacts_count) - Number(stats.messagedCount) > 0;
       }
       const contacts = await r
         .knexReadOnly("campaign_contact")
@@ -688,7 +613,15 @@ export const resolvers = {
     customFields: async campaign =>
       campaign.customFields ||
       cacheableData.campaign.dbCustomFields(campaign.id),
-    stats: async campaign => campaign,
+    stats: async (campaign, _, { user }) => {
+      await accessRequired(
+        user,
+        campaign.organization_id,
+        "SUPERVOLUNTEER",
+        true
+      );
+      return cacheableData.campaign.campaignStats(campaign);
+    },
     cacheable: (campaign, _, { user }) => Boolean(r.redis),
     editors: async (campaign, _, { user }) => {
       await accessRequired(
