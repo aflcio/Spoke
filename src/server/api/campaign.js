@@ -205,7 +205,7 @@ export const resolvers = {
       );
       return r.getCount(
         r
-          .knex("campaign_contact")
+          .knexReadOnly("campaign_contact")
           .join("message", "message.campaign_contact_id", "campaign_contact.id")
           .where({
             "campaign_contact.campaign_id": campaign.id,
@@ -222,7 +222,7 @@ export const resolvers = {
       );
       return r.getCount(
         r
-          .knex("campaign_contact")
+          .knexReadOnly("campaign_contact")
           .join("message", "message.campaign_contact_id", "campaign_contact.id")
           .where({
             "campaign_contact.campaign_id": campaign.id,
@@ -239,7 +239,7 @@ export const resolvers = {
       );
       return await r.getCount(
         r
-          .knex("campaign_contact")
+          .knexReadOnly("campaign_contact")
           .where({ is_opted_out: true, campaign_id: campaign.id })
       );
     },
@@ -251,7 +251,7 @@ export const resolvers = {
         true
       );
       const errorCounts = await r
-        .knex("campaign_contact")
+        .knexReadOnly("campaign_contact")
         .where("campaign_id", campaign.id)
         .whereNotNull("error_code")
         .select("error_code", r.knex.raw("count(*) as error_count"))
@@ -590,7 +590,7 @@ export const resolvers = {
         true
       );
       return await r.getCount(
-        r.knex("campaign_contact").where({ campaign_id: campaign.id })
+        r.knexReadOnly("campaign_contact").where({ campaign_id: campaign.id })
       );
     },
     contactsAreaCodeCounts: async (campaign, _, { user, loaders }) => {
@@ -614,7 +614,7 @@ export const resolvers = {
         true
       );
       const areaCodes = await r
-        .knex("campaign_contact")
+        .knexReadOnly("campaign_contact")
         .select(
           r.knex.raw(`
             substring(cell, 3, 3) AS area_code,
@@ -639,7 +639,7 @@ export const resolvers = {
         return false;
       }
       const contacts = await r
-        .knex("campaign_contact")
+        .knexReadOnly("campaign_contact")
         .select("id")
         .where({ campaign_id: campaign.id, assignment_id: null })
         .limit(1);
@@ -657,7 +657,7 @@ export const resolvers = {
         return Number(campaign.contactsCount) - Number(stats.assignedCount) > 0;
       }
       const contacts = await r
-        .knex("campaign_contact")
+        .knexReadOnly("campaign_contact")
         .select("id")
         .where({ campaign_id: campaign.id, assignment_id: null })
         .limit(1);
@@ -675,7 +675,7 @@ export const resolvers = {
         return Number(campaign.contactsCount) - Number(stats.messagedCount) > 0;
       }
       const contacts = await r
-        .knex("campaign_contact")
+        .knexReadOnly("campaign_contact")
         .select("id")
         .where({
           campaign_id: campaign.id,
