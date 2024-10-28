@@ -1168,7 +1168,7 @@ const rootMutations = {
         ? [{ campaignContactId }]
         : campaignIdsContactIds;
       // this is lazy but is not likely to be done in great bulk
-      log.info({event: "editCampaignContactMessageStatus"}, contacts);
+      log.info({event: "editCampaignContactMessageStatus", contacts});
       await Promise.all(
         contacts.map(async ({ campaignContactId }) => {
           const contact = await cacheableData.campaignContact.load(
