@@ -87,12 +87,24 @@ const campaignStats = async campaign => {
       return JSON.parse(data);
     }
   }
-  const messageCounts = await r
-    .knexReadOnly("campaign_contact")
-    .select("message.is_from_contact", r.knex.raw("count(*) as count"))
-    .join("message", "message.campaign_contact_id", "campaign_contact.id")
-    .where({"campaign_contact.campaign_id": campaign.id})
-    .groupBy("message.is_from_contact");
+  const sentMessagesCount = await r.getCount(
+    r
+      .knexReadOnly("campaign_contact")
+      .join("message", "message.campaign_contact_id", "campaign_contact.id")
+      .where({
+        "campaign_contact.campaign_id": campaign.id,
+        "message.is_from_contact": false
+      })
+  );
+  const receivedMessagesCount = await r.getCount(
+    r
+      .knexReadOnly("campaign_contact")
+      .join("message", "message.campaign_contact_id", "campaign_contact.id")
+      .where({
+        "campaign_contact.campaign_id": campaign.id,
+        "message.is_from_contact": true
+      })
+  );
   const optOutsCount = await r.getCount(
     r
       .knexReadOnly("campaign_contact")
@@ -107,8 +119,8 @@ const campaignStats = async campaign => {
     .orderByRaw("count(*) DESC");
   const organization = await organizationCache.load(campaign.organization_id);
   const data = {
-    sentMessagesCount: messageCounts[0]?.count,
-    receivedMessagesCount: messageCounts[1]?.count,
+    sentMessagesCount,
+    receivedMessagesCount,
     optOutsCount,
     errorCounts: errorCounts.map(e => ({
       ...errorDescription(
