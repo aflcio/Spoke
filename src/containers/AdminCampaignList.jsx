@@ -36,7 +36,7 @@ const INITIAL_SORT_BY = ID_DESC_SORT.value;
 // Exported for testing
 export const AdminCampaignList = ({ params, mutations, router, data }) => {
   const [state, setState] = useState({
-    pageSize: 50,
+    pageSize: 10,
     page: 0,
     isLoading: false,
     campaignsFilter: {
@@ -479,7 +479,7 @@ const queries = {
     `,
     options: ownProps => ({
       variables: {
-        cursor: { offset: 0, limit: 50 },
+        cursor: { offset: 0, limit: 10 },
         organizationId: ownProps.params.organizationId,
         campaignsFilter: {
           isArchived: false,
