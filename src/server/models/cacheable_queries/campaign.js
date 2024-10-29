@@ -107,8 +107,8 @@ const campaignStats = async campaign => {
     .orderByRaw("count(*) DESC");
   const organization = await organizationCache.load(campaign.organization_id);
   const data = {
-    sentMessagesCount: messageCounts[0].count,
-    receivedMessagesCount: messageCounts[1].count,
+    sentMessagesCount: messageCounts[0]?.count,
+    receivedMessagesCount: messageCounts[1]?.count,
     optOutsCount,
     errorCounts: errorCounts.map(e => ({
       ...errorDescription(
