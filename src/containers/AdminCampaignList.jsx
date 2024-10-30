@@ -231,7 +231,7 @@ export const AdminCampaignList = ({ params, mutations, router, data }) => {
     );
   };
 
-  const changePage = (pageDelta, pageSize) => {
+  const changePage = async (pageDelta, pageSize) => {
     const { limit, offset, total } = data.organization.campaigns.pageInfo;
     const currentPage = Math.floor(offset / limit);
     const pageSizeAdjustedCurrentPage = Math.floor(
@@ -239,7 +239,11 @@ export const AdminCampaignList = ({ params, mutations, router, data }) => {
     );
     const maxPage = Math.floor(total / pageSize);
     const newPage = Math.min(maxPage, pageSizeAdjustedCurrentPage + pageDelta);
-    data.fetchMore({
+    setState({
+      ...state,
+      isLoading: true
+    });
+    await data.fetchMore({
       variables: {
         cursor: {
           offset: newPage * pageSize,
@@ -252,6 +256,10 @@ export const AdminCampaignList = ({ params, mutations, router, data }) => {
         }
         return fetchMoreResult;
       }
+    });
+    setState({
+      ...state,
+      isLoading: false
     });
   };
 
