@@ -224,10 +224,21 @@ export async function loadContactsFromDataWarehouseFragment(job, jobEvent) {
 
   const savePortion = await Promise.all(
     knexResult.rows.map(async row => {
-      const formatCell = getFormattedPhoneNumber(
-        row.cell,
-        process.env.PHONE_NUMBER_COUNTRY || "US"
-      );
+      let formatCell = "";
+      try {
+        formatCell = getFormattedPhoneNumber(
+          row.cell,
+          process.env.PHONE_NUMBER_COUNTRY || "US"
+        );
+      } catch(err) {
+        log.error({
+          event: "loadContactsFromDataWarehouseFragment",
+          cell: row.cell,
+          campaginId: jobEvent.campaignId,
+          err
+        }, 'Invalid phone number');
+      }
+
       const contact = {
         campaign_id: jobEvent.campaignId,
         first_name: row.first_name || "",

@@ -1017,7 +1017,7 @@ export async function exportCampaign(job) {
             err
           })
         });
-        log.info({event: 'exportCampaign'}, `Successfully exported ${id}`);
+        log.info({event: 'exportCampaign', campaignId: campaign.id, orgId: organization.id}, `Successfully exported ${id}`);
       }
     } catch (err) {
       log.error({event: 'exportCampaign', err});
@@ -1151,7 +1151,7 @@ export async function importScript(job) {
       .knex("job_request")
       .where("id", job.id)
       .update({ result_message: exception.message, status: -1 });
-      log.warn({event: 'importScript', err: exception});
+      log.error({event: 'importScript', err: exception});
     return;
   }
   defensivelyDeleteJob(job);
