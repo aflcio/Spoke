@@ -439,7 +439,10 @@ const replaceCannedResponsesInDatabase = async (
         }));
       })
     );
-    await trx("tag_canned_response").insert(_.flatten(tagCannedResponses));
+    const flattened = _.flatten(tagCannedResponses);
+    if (flattened.length) {
+      await trx("tag_canned_response").insert(flattened);
+    }
   });
 };
 
